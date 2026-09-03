@@ -400,6 +400,11 @@
                 <div class="flex flex-col gap-2 border-t border-slate-800/60 pt-3">
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Quick Actions</span>
                     <div class="grid grid-cols-2 gap-2">
+                        <!-- 3D Hotspot Markers Toggle Button -->
+                        <button onclick="toggleAnnotations()" id="btn-toggle-markers" class="ctrl-btn py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-blue-600/30 border border-blue-500 text-blue-300 hover:bg-slate-800 active:scale-95 col-span-2" title="Toggle 3D Hotspot Markers">
+                            <i id="icon-toggle-markers" class="fa-solid fa-location-dot text-blue-400"></i>
+                            <span id="text-toggle-markers">3D 마커: ON</span>
+                        </button>
                         <!-- 360 Auto-Rotate Button -->
                         <button onclick="toggleAutoRotate()" id="btn-auto-rotate" class="ctrl-btn py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-blue-500/50 active:scale-95" title="Toggle 360 Auto Rotation">
                             <i id="icon-auto-rotate" class="fa-solid fa-arrows-rotate text-blue-400"></i>
@@ -422,6 +427,77 @@
             <span id="message-text" class="text-sm font-medium">메시지</span>
         </div>
 
+    </div>
+
+    <!-- Sketchfab-style 3D Annotation Overlay Layer -->
+    <div id="annotation-layer" class="fixed inset-0 pointer-events-none z-20 overflow-hidden">
+        <!-- Dynamically managed 3D Billboard Numbered Pins -->
+    </div>
+
+    <!-- Responsive Technical Spec HUD Glass Card -->
+    <div id="spec-card" style="display: none;" class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100vw-32px)] max-w-sm glass-panel p-3 rounded-2xl border border-blue-500/30 shadow-2xl z-50 pointer-events-auto backdrop-blur-xl transition-all duration-300">
+        <!-- Header & Action Buttons -->
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-700/60">
+            <div class="flex items-center gap-2">
+                <span id="spec-card-badge" class="w-6 h-6 rounded-full bg-blue-600/40 text-blue-400 border border-blue-500/60 flex items-center justify-center text-xs font-bold font-mono">01</span>
+                <h4 id="spec-card-title" class="text-sm font-bold text-slate-100 tracking-wide">Component Name</h4>
+            </div>
+            <div class="flex items-center gap-1">
+                <!-- Edit Marker Button -->
+                <button onclick="toggleEditMarkerMode()" id="btn-edit-marker" class="text-slate-400 hover:text-blue-400 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-slate-800 transition-colors" title="마커 내용/시점 수정">
+                    <i id="icon-edit-marker" class="fa-solid fa-pen-to-square text-xs"></i>
+                </button>
+                <!-- Close Button -->
+                <button onclick="closeSpecCard(false)" class="text-slate-400 hover:text-white w-6 h-6 flex items-center justify-center rounded-lg hover:bg-slate-800 transition-colors" title="닫기">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW MODE (Slim & Compact for landscape / mobile) -->
+        <div id="spec-card-view-mode" class="flex flex-col gap-2">
+            <p id="spec-card-desc" class="text-xs text-slate-200 leading-snug">
+                Component description.
+            </p>
+            <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-800/80">
+                <span class="text-[10px] text-slate-400 font-mono flex items-center gap-1"><i class="fa-solid fa-crosshairs text-blue-400"></i>POI FOCUS</span>
+                <button onclick="closeSpecCard(true)" class="text-xs font-semibold py-1 px-3 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 border border-blue-500/40 flex items-center gap-1.5 active:scale-95 transition-all">
+                    <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
+                    <span>전체 뷰 복귀</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- EDIT MODE (Simple & Intuitive Marker Editor) -->
+        <div id="spec-card-edit-mode" style="display: none;" class="flex flex-col gap-2.5">
+            <div>
+                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">부품 명칭</label>
+                <input id="edit-marker-name" type="text" class="w-full bg-slate-900/90 text-slate-100 rounded-lg px-2.5 py-1.5 text-xs border border-slate-700 focus:border-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">설명 / 메모</label>
+                <textarea id="edit-marker-desc" rows="2" class="w-full bg-slate-900/90 text-slate-100 rounded-lg px-2.5 py-1.5 text-xs border border-slate-700 focus:border-blue-500 outline-none resize-none"></textarea>
+            </div>
+            <!-- Set Current Camera View Button -->
+            <button onclick="captureCurrentCameraForActiveMarker()" class="w-full py-1.5 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-blue-300 border border-blue-500/30 text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                <i class="fa-solid fa-camera-rotate text-blue-400 text-xs"></i>
+                <span>현재 화면 각도를 이 핀의 포커스 시점으로 저장</span>
+            </button>
+            <!-- Save / Cancel Buttons -->
+            <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-800">
+                <button onclick="resetActiveMarkerToDefault()" class="text-[11px] text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors" title="이 마커를 공장 초기값으로 복구">
+                    <i class="fa-solid fa-rotate-left text-[10px]"></i>
+                    <span>초기화</span>
+                </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleEditMarkerMode(false)" class="text-xs px-2.5 py-1 rounded-lg text-slate-400 hover:text-white bg-slate-800/80">취소</button>
+                    <button onclick="saveActiveMarkerChanges()" class="text-xs px-3.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center gap-1 active:scale-95 shadow-md transition-all">
+                        <i class="fa-solid fa-check text-[10px]"></i>
+                        <span>저장</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Webcam PIP Container -->
@@ -864,18 +940,41 @@
         function animate3D() {
             requestAnimationFrame(animate3D);
 
-            // 360도 Y축 자동 회전 (조작 중이 아닐 때 부드럽게 턴테이블 회전)
-            if (isAutoRotating && !isLocked && !isRightPinching && !isLeftPinching && !isTwoHandPinching && !isDragging && !touchMode) {
-                targetRotationY += autoRotateSpeed;
-            }
+            // 1.2초 시네마틱 카메라 플라이투(Fly-To) 베지어 보간
+            if (isCameraAnimating) {
+                const elapsed = performance.now() - cameraAnimStart;
+                const t = Math.min(1.0, elapsed / cameraAnimDuration);
+                const ease = easeOutCubic(t);
 
-            // Lerp 연산으로 움직임을 고급스럽고 묵직하게 보정
-            currentRotationX += (targetRotationX - currentRotationX) * easing;
-            currentRotationY += (targetRotationY - currentRotationY) * easing;
-            currentScale += (targetScale - currentScale) * easing;
-            
-            currentPanX += (targetPanX - currentPanX) * easing;
-            currentPanY += (targetPanY - currentPanY) * easing;
+                currentRotationX = camStartValues.rotX + (camTargetValues.rotX - camStartValues.rotX) * ease;
+                currentRotationY = camStartValues.rotY + (camTargetValues.rotY - camStartValues.rotY) * ease;
+                currentPanX = camStartValues.panX + (camTargetValues.panX - camStartValues.panX) * ease;
+                currentPanY = camStartValues.panY + (camTargetValues.panY - camStartValues.panY) * ease;
+                currentScale = camStartValues.scale + (camTargetValues.scale - camStartValues.scale) * ease;
+
+                targetRotationX = currentRotationX;
+                targetRotationY = currentRotationY;
+                targetPanX = currentPanX;
+                targetPanY = currentPanY;
+                targetScale = currentScale;
+
+                if (t >= 1.0) {
+                    isCameraAnimating = false;
+                }
+            } else {
+                // 360도 Y축 자동 회전 (조작 중이 아닐 때 부드럽게 턴테이블 회전)
+                if (isAutoRotating && !isLocked && !isRightPinching && !isLeftPinching && !isTwoHandPinching && !isDragging && !touchMode) {
+                    targetRotationY += autoRotateSpeed;
+                }
+
+                // Lerp 연산으로 움직임을 고급스럽고 묵직하게 보정
+                currentRotationX += (targetRotationX - currentRotationX) * easing;
+                currentRotationY += (targetRotationY - currentRotationY) * easing;
+                currentScale += (targetScale - currentScale) * easing;
+                
+                currentPanX += (targetPanX - currentPanX) * easing;
+                currentPanY += (targetPanY - currentPanY) * easing;
+            }
 
             // 폭파(Explode) 애니메이션 목표값 보간
             const targetExplode = isExploded ? 1.0 : 0.0;
@@ -908,6 +1007,9 @@
             document.getElementById('scale-val').innerText = (currentScale * 100).toFixed(0) + '%';
 
             renderer.render(scene, camera);
+
+            // 매 프레임마다 3D 마커 핀 위치 실시간 동기화
+            updateAnnotations();
         }
 
         /**
@@ -1676,6 +1778,466 @@
          * [함수] toggleAutoRotate()
          * 3D 차량 360도 자동 회전(Turntable) 토글 함수
          */
+        
+        /**
+         * ==========================================
+         * 3D Annotation Hotspots & Cinematic Fly-To Engine (Sketchfab Style)
+         * ==========================================
+         */
+        let isMarkersVisible = true;
+        let activeMarkerId = null;
+        let isCameraAnimating = false;
+        let cameraAnimStart = 0;
+        const cameraAnimDuration = 1200; // 1.2초 시네마틱 감속 비행
+        let camStartValues = { rotX: 0, rotY: 0, panX: 0, panY: 0, scale: 1 };
+        let camTargetValues = { rotX: 0, rotY: 0, panX: 0, panY: 0, scale: 1 };
+
+        function easeOutCubic(t) {
+            return 1 - Math.pow(1 - t, 3);
+        }
+
+        // Ferrari 849 및 Demo Box Car용 부품 핫스팟 데이터셋
+        const markerDatasets = {
+            ferrari: [
+                {
+                    id: 1,
+                    name: "3.9L V8 Twin-Turbo",
+                    badge: "01",
+                    pos: { x: 0, y: 0.55, z: -0.6 },
+                    desc: "830마력 고회전 미드리어 V8 트윈터보 엔진",
+                    targetRotX: 0.35, targetRotY: 0.65, targetPanX: 0.2, targetPanY: -0.3, targetScale: 1.85
+                },
+                {
+                    id: 2,
+                    name: "Carbon Ceramic Brake",
+                    badge: "02",
+                    pos: { x: 1.15, y: -0.15, z: 1.35 },
+                    desc: "Brembo 6-피스톤 398mm 카본 세라믹 브레이크",
+                    targetRotX: 0.15, targetRotY: -1.1, targetPanX: 0.5, targetPanY: 0.25, targetScale: 1.65
+                },
+                {
+                    id: 3,
+                    name: "Aerodynamic Cockpit",
+                    badge: "03",
+                    pos: { x: 0, y: 0.7, z: 0.15 },
+                    desc: "초경량 카본 모노코크 섀시 & 커브드 디지털 인터페이스",
+                    targetRotX: 0.45, targetRotY: 0.3, targetPanX: 0.1, targetPanY: -0.4, targetScale: 1.9
+                },
+                {
+                    id: 4,
+                    name: "Active Aero Diffuser",
+                    badge: "04",
+                    pos: { x: 0, y: 0.45, z: -2.1 },
+                    desc: "390kg 다운포스 가변 리어 윙 & 티타늄 쿼드 배기",
+                    targetRotX: 0.2, targetRotY: 3.14, targetPanX: 0.0, targetPanY: -0.2, targetScale: 1.8
+                }
+            ],
+            demo: [
+                {
+                    id: 1,
+                    name: "Neon LED Matrix Light",
+                    badge: "01",
+                    pos: { x: 0, y: 0.4, z: 2.1 },
+                    desc: "1,800 루멘 미래형 일체형 수평 매트릭스 LED 라이트",
+                    targetRotX: 0.15, targetRotY: 0.0, targetPanX: 0.0, targetPanY: -0.2, targetScale: 2.0
+                },
+                {
+                    id: 2,
+                    name: "Concept Aero Wheel",
+                    badge: "02",
+                    pos: { x: 1.0, y: 0.45, z: 1.3 },
+                    desc: "21인치 터빈 단조 알로이 휠 & 발광 허브 캡",
+                    targetRotX: 0.15, targetRotY: -1.1, targetPanX: 0.5, targetPanY: 0.25, targetScale: 1.65
+                },
+                {
+                    id: 3,
+                    name: "Panoramic Glass Cabin",
+                    badge: "03",
+                    pos: { x: 0, y: 1.0, z: -0.2 },
+                    desc: "360도 개방형 전기변색 파노라믹 글래스 캐빈",
+                    targetRotX: 0.4, targetRotY: 0.5, targetPanX: 0.1, targetPanY: -0.4, targetScale: 1.85
+                },
+                {
+                    id: 4,
+                    name: "Lightbar Rear Spoiler",
+                    badge: "04",
+                    pos: { x: 0, y: 0.8, z: -2.0 },
+                    desc: "에어브레이크 연동 일체형 발광 리어 스포일러",
+                    targetRotX: 0.25, targetRotY: 3.14, targetPanX: 0.0, targetPanY: -0.3, targetScale: 1.85
+                }
+            ]
+        };
+
+        function getCurrentMarkerList() {
+            const select = document.getElementById('car-model-select');
+            if (select && select.value && select.value.includes('ferrari')) {
+                return markerDatasets.ferrari;
+            }
+            return markerDatasets.demo;
+        }
+
+        /**
+         * [함수] initAnnotationPins()
+         * 3D 어노테이션 핀 DOM 요소 생성
+         */
+        function initAnnotationPins() {
+            loadCustomMarkersFromStorage();
+            const layer = document.getElementById('annotation-layer');
+            if (!layer) return;
+            layer.innerHTML = '';
+
+            const markers = getCurrentMarkerList();
+            markers.forEach((m) => {
+                const pin = document.createElement('div');
+                pin.id = `annotation-pin-${m.id}`;
+                pin.className = 'annotation-pin absolute cursor-pointer pointer-events-auto flex items-center justify-center group -translate-x-1/2 -translate-y-1/2 transition-opacity duration-200';
+                pin.style.transform = 'translate(-50%, -50%)';
+                pin.onclick = (e) => {
+                    e.stopPropagation();
+                    focusMarker(m.id);
+                };
+
+                pin.innerHTML = `
+                    <span class="absolute w-8 h-8 rounded-full bg-blue-500/40 animate-ping pointer-events-none"></span>
+                    <div class="relative w-7 h-7 rounded-full bg-slate-900/95 border-2 border-blue-400 text-blue-300 flex items-center justify-center text-[11px] font-bold font-mono shadow-[0_0_15px_rgba(59,130,246,0.8)] group-hover:scale-125 group-hover:border-white group-hover:text-white transition-all group-active:scale-95">
+                        ${m.id}
+                    </div>
+                    <div class="absolute left-9 bg-slate-900/90 text-slate-200 border border-slate-700/80 px-2 py-0.5 rounded text-[11px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-semibold backdrop-blur-sm shadow-lg">
+                        ${m.name}
+                    </div>
+                `;
+                layer.appendChild(pin);
+            });
+        }
+
+        /**
+         * [함수] updateAnnotations()
+         * 매 Three.js 프레임마다 3D 월드 좌표를 2D 화면 좌표로 실시간 투영 및 차폐 처리
+         */
+        function updateAnnotations() {
+            const layer = document.getElementById('annotation-layer');
+            if (!layer || !isMarkersVisible || !camera || !carGroup) {
+                if (layer) layer.style.display = isMarkersVisible ? 'block' : 'none';
+                return;
+            }
+
+            const markers = getCurrentMarkerList();
+            const camForward = new THREE.Vector3();
+            camera.getWorldDirection(camForward);
+
+            markers.forEach((m) => {
+                const pin = document.getElementById(`annotation-pin-${m.id}`);
+                if (!pin) return;
+
+                // 3D 월드 좌표 계산 (carGroup의 변환 행렬 적용)
+                const worldPos = new THREE.Vector3(m.pos.x, m.pos.y, m.pos.z);
+                worldPos.applyMatrix4(carGroup.matrixWorld);
+
+                // 카메라 전방 방향과 내적하여 등 뒤에 위치하는지 검사 (Occlusion Culling)
+                const toMarker = worldPos.clone().sub(camera.position);
+                const isBehind = toMarker.dot(camForward) <= 0;
+
+                if (isBehind) {
+                    pin.style.display = 'none';
+                    return;
+                }
+
+                // Three.js 좌표를 화면 NDC(-1 ~ +1)로 투영
+                const screenPos = worldPos.clone().project(camera);
+
+                // 화면 Frustum 영역 바깥인지 검사
+                if (screenPos.x < -1.1 || screenPos.x > 1.1 || screenPos.y < -1.1 || screenPos.y > 1.1) {
+                    pin.style.display = 'none';
+                    return;
+                }
+
+                // 2D 픽셀 좌표 변환
+                const pixelX = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const pixelY = (-(screenPos.y * 0.5) + 0.5) * window.innerHeight;
+
+                pin.style.display = 'flex';
+                pin.style.left = `${pixelX}px`;
+                pin.style.top = `${pixelY}px`;
+            });
+        }
+
+        /**
+         * [함수] focusMarker(markerId)
+         * Sketchfab 스타일 1.2초 시네마틱 카메라 플라이투(setCameraLookAt) 실행
+         */
+        function focusMarker(markerId) {
+            const markers = getCurrentMarkerList();
+            const m = markers.find(item => item.id === markerId);
+            if (!m) return;
+
+            activeMarkerId = markerId;
+            triggerHaptic(35);
+
+            // 카메라 비행 시작값 및 목표값 설정
+            camStartValues = {
+                rotX: currentRotationX,
+                rotY: currentRotationY,
+                panX: currentPanX,
+                panY: currentPanY,
+                scale: currentScale
+            };
+
+            camTargetValues = {
+                rotX: m.targetRotX,
+                rotY: m.targetRotY,
+                panX: m.targetPanX,
+                panY: m.targetPanY,
+                scale: m.targetScale
+            };
+
+            cameraAnimStart = performance.now();
+            isCameraAnimating = true;
+
+            // 스펙 HUD 카드 표시
+            showSpecCard(m);
+            showMessage(`포커스 이동: [#${m.badge}] ${m.name}`, "info", 1800);
+        }
+
+        /**
+         * [함수] showSpecCard(marker)
+         * 반응형 테크니컬 스펙 HUD 글래스 카드 데이터 갱신 및 표시
+         */
+        function showSpecCard(marker) {
+            const card = document.getElementById('spec-card');
+            const badge = document.getElementById('spec-card-badge');
+            const title = document.getElementById('spec-card-title');
+            const desc = document.getElementById('spec-card-desc');
+
+            if (!card) return;
+
+            badge.innerText = marker.badge;
+            title.innerText = marker.name;
+            desc.innerText = marker.desc;
+
+            toggleEditMarkerMode(false);
+            card.style.display = 'block';
+            card.classList.remove('opacity-0', 'translate-y-4');
+        }
+
+        /**
+         * [함수] closeSpecCard(resetCamera)
+         * 스펙 카드 닫기 및 옵션 선택 시 전체 뷰로 1.2초 플라이투 복귀
+         */
+        function closeSpecCard(resetCamera = false) {
+            const card = document.getElementById('spec-card');
+            if (card) {
+                card.style.display = 'none';
+            }
+            activeMarkerId = null;
+            triggerHaptic(25);
+
+            if (resetCamera) {
+                // 홈 뷰(Isometric)로 1.2초 시네마틱 복귀
+                camStartValues = {
+                    rotX: currentRotationX,
+                    rotY: currentRotationY,
+                    panX: currentPanX,
+                    panY: currentPanY,
+                    scale: currentScale
+                };
+
+                camTargetValues = {
+                    rotX: 0.4,
+                    rotY: 0.78,
+                    panX: 0,
+                    panY: 0,
+                    scale: 1.0
+                };
+
+                targetRotationX = 0.4;
+                targetRotationY = 0.78;
+                targetPanX = 0;
+                targetPanY = 0;
+                targetScale = 1.0;
+
+                cameraAnimStart = performance.now();
+                isCameraAnimating = true;
+
+                document.querySelectorAll('[id^="btn-view-"]').forEach(btn => btn.classList.remove('active'));
+                const btnIso = document.getElementById('btn-view-iso');
+                if (btnIso) btnIso.classList.add('active');
+
+                showMessage("전체 홈 뷰로 시네마틱 복귀합니다.", "success", 1800);
+            }
+        }
+
+        /**
+         * [함수] toggleAnnotations()
+         * 3D 어노테이션 마커 표시/숨김 토글
+         */
+        
+        let isMarkerEditMode = false;
+
+        /**
+         * [함수] toggleEditMarkerMode(forceState)
+         * 스펙 카드의 조회 모드 <-> 편집 모드 전환
+         */
+        function toggleEditMarkerMode(forceState = null) {
+            isMarkerEditMode = forceState !== null ? forceState : !isMarkerEditMode;
+            triggerHaptic(20);
+
+            const viewMode = document.getElementById('spec-card-view-mode');
+            const editMode = document.getElementById('spec-card-edit-mode');
+            const editBtn = document.getElementById('btn-edit-marker');
+            const editIcon = document.getElementById('icon-edit-marker');
+
+            if (isMarkerEditMode) {
+                if (viewMode) viewMode.style.display = 'none';
+                if (editMode) editMode.style.display = 'flex';
+                if (editBtn) editBtn.classList.add('text-blue-400');
+                if (editIcon) editIcon.className = 'fa-solid fa-eye text-xs';
+
+                // 현재 마커 데이터 인풋에 채우기
+                const markers = getCurrentMarkerList();
+                const m = markers.find(item => item.id === activeMarkerId);
+                if (m) {
+                    const nameInput = document.getElementById('edit-marker-name');
+                    const descInput = document.getElementById('edit-marker-desc');
+                    if (nameInput) nameInput.value = m.name;
+                    if (descInput) descInput.value = m.desc;
+                }
+            } else {
+                if (viewMode) viewMode.style.display = 'block';
+                if (editMode) editMode.style.display = 'none';
+                if (editBtn) editBtn.classList.remove('text-blue-400');
+                if (editIcon) editIcon.className = 'fa-solid fa-pen-to-square text-xs';
+            }
+        }
+
+        /**
+         * [함수] captureCurrentCameraForActiveMarker()
+         * 현재 회전/줌/팬 시점을 활성 마커의 1.2초 플라이투 목표 앵글로 캡처
+         */
+        function captureCurrentCameraForActiveMarker() {
+            const markers = getCurrentMarkerList();
+            const m = markers.find(item => item.id === activeMarkerId);
+            if (!m) return;
+
+            m.targetRotX = Number(currentRotationX.toFixed(3));
+            m.targetRotY = Number(currentRotationY.toFixed(3));
+            m.targetPanX = Number(currentPanX.toFixed(3));
+            m.targetPanY = Number(currentPanY.toFixed(3));
+            m.targetScale = Number(currentScale.toFixed(2));
+
+            triggerHaptic([30, 30]);
+            showMessage(`현재 시점을 [${m.name}] 포커스 뷰로 등록했습니다!`, "success", 2000);
+        }
+
+        /**
+         * [함수] saveActiveMarkerChanges()
+         * 마커 수정 내용 저장 및 localStorage 영구 보존
+         */
+        function saveActiveMarkerChanges() {
+            const markers = getCurrentMarkerList();
+            const m = markers.find(item => item.id === activeMarkerId);
+            if (!m) return;
+
+            const nameInput = document.getElementById('edit-marker-name');
+            const descInput = document.getElementById('edit-marker-desc');
+
+            if (nameInput && nameInput.value.trim()) {
+                m.name = nameInput.value.trim();
+            }
+            if (descInput) {
+                m.desc = descInput.value.trim();
+            }
+
+            // localStorage에 모델별 커스텀 마커 저장
+            saveCustomMarkersToStorage();
+
+            // UI 갱신
+            initAnnotationPins();
+            showSpecCard(m);
+            toggleEditMarkerMode(false);
+            triggerHaptic(40);
+            showMessage(`[#${m.badge}] 마커 정보가 성공적으로 저장되었습니다.`, "success", 2000);
+        }
+
+        /**
+         * [함수] resetActiveMarkerToDefault()
+         * 현재 마커를 기본 설정값으로 복구
+         */
+        function resetActiveMarkerToDefault() {
+            localStorage.removeItem('smartpinch_custom_markers');
+            triggerHaptic([50, 80]);
+            showMessage("마커가 기본 프리셋 값으로 초기화되었습니다.", "info", 2000);
+            toggleEditMarkerMode(false);
+            initAnnotationPins();
+            const markers = getCurrentMarkerList();
+            const m = markers.find(item => item.id === activeMarkerId);
+            if (m) showSpecCard(m);
+        }
+
+        function saveCustomMarkersToStorage() {
+            try {
+                localStorage.setItem('smartpinch_custom_markers', JSON.stringify(markerDatasets));
+            } catch (e) {
+                console.error("Failed to save custom markers:", e);
+            }
+        }
+
+        function loadCustomMarkersFromStorage() {
+            try {
+                const saved = localStorage.getItem('smartpinch_custom_markers');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.ferrari && parsed.demo) {
+                        // 텍스트/설명은 사용자 커스텀을 보존하되 카메라 뷰는 2번 최적화 좌표 적용
+                        markerDatasets.ferrari.forEach((m, idx) => {
+                            if (parsed.ferrari[idx]) {
+                                m.name = parsed.ferrari[idx].name || m.name;
+                                m.desc = parsed.ferrari[idx].desc || m.desc;
+                            }
+                        });
+                        markerDatasets.demo.forEach((m, idx) => {
+                            if (parsed.demo[idx]) {
+                                m.name = parsed.demo[idx].name || m.name;
+                                m.desc = parsed.demo[idx].desc || m.desc;
+                            }
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load custom markers:", e);
+            }
+        }
+
+        function toggleAnnotations() {
+            isMarkersVisible = !isMarkersVisible;
+            triggerHaptic(30);
+
+            const btn = document.getElementById('btn-toggle-markers');
+            const icon = document.getElementById('icon-toggle-markers');
+            const text = document.getElementById('text-toggle-markers');
+            const layer = document.getElementById('annotation-layer');
+
+            if (isMarkersVisible) {
+                if (btn) {
+                    btn.classList.add('bg-blue-600/30', 'border-blue-500', 'text-blue-300');
+                    btn.classList.remove('bg-slate-900/80', 'text-slate-400', 'border-slate-800');
+                }
+                if (icon) icon.className = 'fa-solid fa-location-dot text-blue-400';
+                if (text) text.innerText = '3D 마커: ON';
+                if (layer) layer.style.display = 'block';
+                showMessage("3D 어노테이션 마커를 표시합니다.", "info", 1500);
+            } else {
+                if (btn) {
+                    btn.classList.remove('bg-blue-600/30', 'border-blue-500', 'text-blue-300');
+                    btn.classList.add('bg-slate-900/80', 'text-slate-400', 'border-slate-800');
+                }
+                if (icon) icon.className = 'fa-solid fa-location-pin-lock text-slate-500';
+                if (text) text.innerText = '3D 마커: OFF';
+                if (layer) layer.style.display = 'none';
+                closeSpecCard(false);
+                showMessage("3D 어노테이션 마커를 숨겼습니다.", "info", 1500);
+            }
+        }
+
         function toggleAutoRotate() {
             isAutoRotating = !isAutoRotating;
             triggerHaptic(30);
@@ -1909,6 +2471,7 @@
             init3D();
             initWebcamResize();
             enableMouseControl();
+            initAnnotationPins();
 
             try {
                 showMessage("AI 비전 감지 모델 로딩 중...", "info", 0);
