@@ -38,7 +38,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            z-index: 10;
+            z-index: 40;
             pointer-events: none; /* Let clicks pass through to canvas if needed */
         }
 
@@ -55,6 +55,7 @@
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
             background-color: #000;
             pointer-events: auto;
+            z-index: 20;
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
@@ -442,7 +443,7 @@
     <!-- Webcam PIP Container -->
     <div id="webcam-container" class="pinch-inactive flex flex-col justify-end">
         <!-- Resize Handle (Top-Left corner) -->
-        <div id="webcam-resize-handle" class="absolute top-0 left-0 w-5 h-5 cursor-nwse-resize z-30 flex items-center justify-center text-slate-400 hover:text-slate-200 bg-slate-950/60 rounded-br-lg border-r border-b border-slate-800 pointer-events-auto transition-colors" title="Drag to Resize">
+        <div id="webcam-resize-handle" class="absolute top-0 left-0 w-5 h-5 cursor-nwse-resize z-10 flex items-center justify-center text-slate-400 hover:text-slate-200 bg-slate-950/60 rounded-br-lg border-r border-b border-slate-800 pointer-events-auto transition-colors" title="Drag to Resize">
             <i class="fa-solid fa-expand text-[8px]"></i>
         </div>
 

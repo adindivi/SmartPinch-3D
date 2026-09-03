@@ -38,7 +38,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            z-index: 10;
+            z-index: 40;
             pointer-events: none; /* Let clicks pass through to canvas if needed */
         }
 
@@ -55,6 +55,7 @@
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
             background-color: #000;
             pointer-events: auto;
+            z-index: 20;
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
@@ -221,10 +222,10 @@
                 top: 16px !important;
                 right: 16px !important;
                 width: calc(100vw - 32px) !important;
-                max-width: 300px !important;
+                max-width: 320px !important;
                 max-height: calc(100vh - 32px) !important;
                 overflow-y: auto !important;
-                z-index: 60 !important;
+                z-index: 70 !important;
                 pointer-events: auto !important;
             }
             #webcam-container {
@@ -492,7 +493,7 @@
     <!-- Webcam PIP Container -->
     <div id="webcam-container" class="pinch-inactive flex flex-col justify-end">
         <!-- Resize Handle (Top-Left corner) - 모바일 터치 친화적 32x32px 크기 -->
-        <div id="webcam-resize-handle" class="absolute top-0 left-0 w-8 h-8 cursor-nwse-resize z-30 flex items-center justify-center text-slate-300 hover:text-white bg-slate-900/90 rounded-br-xl border-r border-b border-slate-700 pointer-events-auto shadow-md transition-colors active:bg-blue-600" title="Drag to Resize">
+        <div id="webcam-resize-handle" class="absolute top-0 left-0 w-8 h-8 cursor-nwse-resize z-10 flex items-center justify-center text-slate-300 hover:text-white bg-slate-900/90 rounded-br-xl border-r border-b border-slate-700 pointer-events-auto shadow-md transition-colors active:bg-blue-600" title="Drag to Resize">
             <i class="fa-solid fa-expand text-xs"></i>
         </div>
 
