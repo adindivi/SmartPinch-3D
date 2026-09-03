@@ -81,6 +81,37 @@
             transition: opacity 0.3s;
         }
 
+        
+        /* Apple Reference Design System: Liquid Glass & Capsules */
+        .apple-glass {
+            background: rgba(18, 18, 22, 0.72) !important;
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5) !important;
+        }
+        .apple-pill-36 {
+            height: 36px !important;
+            padding: 0 15px !important;
+            border-radius: 980px !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        .apple-pill-44 {
+            height: 44px !important;
+            padding: 0 21px !important;
+            border-radius: 980px !important;
+            font-size: 15px !important;
+            font-weight: 500 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
         .glass-panel {
             background: rgba(15, 23, 42, 0.65);
             backdrop-filter: blur(16px);
@@ -123,22 +154,22 @@
 
         /* Interactive controls styling */
         .ctrl-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            color: #94a3b8;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 980px !important;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            color: #e2e8f0;
         }
         .ctrl-btn:hover {
-            background: rgba(255, 255, 255, 0.12);
-            color: #f8fafc;
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.25);
         }
         .ctrl-btn.active {
-            background: rgba(59, 130, 246, 0.2);
-            border-color: #3b82f6;
-            color: #60a5fa;
-            box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
+            background: #0071e3 !important;
+            border-color: #0071e3 !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 14px rgba(0, 113, 227, 0.4) !important;
         }
 
         /* 모바일 웹뷰에서 터치 클릭 및 선택이 작동하도록 widget 예외 명시 */
@@ -400,20 +431,20 @@
                 <div class="flex flex-col gap-2 border-t border-slate-800/60 pt-3">
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Quick Actions</span>
                     <div class="grid grid-cols-2 gap-2">
-                        <!-- 3D Hotspot Markers Toggle Button -->
-                        <button onclick="toggleAnnotations()" id="btn-toggle-markers" class="ctrl-btn py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-slate-900/80 border border-slate-800 text-slate-400 hover:bg-slate-800 active:scale-95 col-span-2" title="Toggle 3D Hotspot Markers">
-                            <i id="icon-toggle-markers" class="fa-solid fa-location-pin-lock text-slate-500"></i>
+                        <!-- 3D Hotspot Markers Toggle Button (Apple 40px Capsule) -->
+                        <button onclick="toggleAnnotations()" id="btn-toggle-markers" class="ctrl-btn h-[40px] text-xs font-medium flex items-center justify-center gap-1.5 transition-all bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 active:scale-95 col-span-2" title="Toggle 3D Hotspot Markers">
+                            <i id="icon-toggle-markers" class="fa-solid fa-location-pin-lock text-white/50"></i>
                             <span id="text-toggle-markers">3D 마커: OFF</span>
                         </button>
-                        <!-- 360 Auto-Rotate Button -->
-                        <button onclick="toggleAutoRotate()" id="btn-auto-rotate" class="ctrl-btn py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-blue-500/50 active:scale-95" title="Toggle 360 Auto Rotation">
-                            <i id="icon-auto-rotate" class="fa-solid fa-arrows-rotate text-blue-400"></i>
-                            <span id="text-auto-rotate">360° Rotate</span>
+                        <!-- 360 Auto-Rotate Button (Apple 36px Capsule) -->
+                        <button onclick="toggleAutoRotate()" id="btn-auto-rotate" class="ctrl-btn h-[36px] text-xs font-medium flex items-center justify-center gap-1.5 transition-all bg-white/5 hover:bg-white/10 text-white border border-white/10 active:scale-95" title="Toggle 360 Auto Rotation">
+                            <i id="icon-auto-rotate" class="fa-solid fa-arrows-rotate text-[#2997ff]"></i>
+                            <span id="text-auto-rotate">360° 회전</span>
                         </button>
-                        <!-- Capture Snapshot Button -->
-                        <button onclick="captureSnapshot()" id="btn-capture" class="ctrl-btn py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-emerald-500/50 active:scale-95" title="Capture PNG Snapshot">
+                        <!-- Capture Snapshot Button (Apple 36px Capsule) -->
+                        <button onclick="captureSnapshot()" id="btn-capture" class="ctrl-btn h-[36px] text-xs font-medium flex items-center justify-center gap-1.5 transition-all bg-white/5 hover:bg-white/10 text-white border border-white/10 active:scale-95" title="Capture PNG Snapshot">
                             <i class="fa-solid fa-camera text-emerald-400"></i>
-                            <span>Capture</span>
+                            <span>캡처</span>
                         </button>
                     </div>
                 </div>
@@ -434,64 +465,70 @@
         <!-- Dynamically managed 3D Billboard Numbered Pins -->
     </div>
 
-    <!-- Responsive Technical Spec HUD Glass Card -->
-    <div id="spec-card" style="display: none;" class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100vw-32px)] max-w-sm glass-panel p-3 rounded-2xl border border-blue-500/30 shadow-2xl z-50 pointer-events-auto backdrop-blur-xl transition-all duration-300">
-        <!-- Header & Action Buttons -->
-        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-700/60">
-            <div class="flex items-center gap-2">
-                <span id="spec-card-badge" class="w-6 h-6 rounded-full bg-blue-600/40 text-blue-400 border border-blue-500/60 flex items-center justify-center text-xs font-bold font-mono">01</span>
-                <h4 id="spec-card-title" class="text-sm font-bold text-slate-100 tracking-wide">Component Name</h4>
+    <!-- Responsive Technical Spec HUD Glass Card - Apple Reference Liquid Glass Pill -->
+    <div id="spec-card" style="display: none;" class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[calc(100vw-32px)] max-w-md apple-glass px-4 py-2.5 rounded-full z-50 pointer-events-auto transition-all duration-300">
+        <!-- VIEW MODE: Single-tier Ultra-Slim Floating Capsule -->
+        <div id="spec-card-view-mode" class="flex items-center justify-between gap-3 w-full">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <span id="spec-card-badge" class="w-7 h-7 rounded-full bg-[#0071e3] text-white flex items-center justify-center text-xs font-semibold shrink-0 shadow-sm">01</span>
+                <div class="flex flex-col min-w-0">
+                    <h4 id="spec-card-title" class="text-xs font-semibold text-white truncate tracking-tight">Component Name</h4>
+                    <p id="spec-card-desc" class="text-[11px] text-white/70 truncate leading-none">
+                        Component description.
+                    </p>
+                </div>
             </div>
-            <div class="flex items-center gap-1">
-                <!-- Edit Marker Button -->
-                <button onclick="toggleEditMarkerMode()" id="btn-edit-marker" class="text-slate-400 hover:text-blue-400 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-slate-800 transition-colors" title="마커 내용/시점 수정">
+            
+            <div class="flex items-center gap-1.5 shrink-0">
+                <!-- 36px Apple Compact Pill: Return to Full View -->
+                <button onclick="closeSpecCard(true)" class="apple-pill-36 bg-[#0071e3] hover:bg-[#0077ed] text-white gap-1.5 active:scale-95 shadow-sm" title="전체 뷰 복귀">
+                    <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
+                    <span class="whitespace-nowrap">복귀</span>
+                </button>
+                <!-- Subtle circular glass action: Edit -->
+                <button onclick="toggleEditMarkerMode()" id="btn-edit-marker" class="w-[36px] h-[36px] rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center border border-white/10 transition-colors active:scale-95" title="수정">
                     <i id="icon-edit-marker" class="fa-solid fa-pen-to-square text-xs"></i>
                 </button>
-                <!-- Close Button -->
-                <button onclick="closeSpecCard(false)" class="text-slate-400 hover:text-white w-6 h-6 flex items-center justify-center rounded-lg hover:bg-slate-800 transition-colors" title="닫기">
+                <!-- Subtle circular glass action: Close -->
+                <button onclick="closeSpecCard(false)" class="w-[36px] h-[36px] rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center border border-white/10 transition-colors active:scale-95" title="닫기">
                     <i class="fa-solid fa-xmark text-xs"></i>
                 </button>
             </div>
         </div>
 
-        <!-- VIEW MODE (Slim & Compact for landscape / mobile) -->
-        <div id="spec-card-view-mode" class="flex flex-col gap-2">
-            <p id="spec-card-desc" class="text-xs text-slate-200 leading-snug">
-                Component description.
-            </p>
-            <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-800/80">
-                <span class="text-[10px] text-slate-400 font-mono flex items-center gap-1"><i class="fa-solid fa-crosshairs text-blue-400"></i>POI FOCUS</span>
-                <button onclick="closeSpecCard(true)" class="text-xs font-semibold py-1 px-3 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 border border-blue-500/40 flex items-center gap-1.5 active:scale-95 transition-all">
-                    <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
-                    <span>전체 뷰 복귀</span>
+        <!-- EDIT MODE (Expands to Card for editing) -->
+        <div id="spec-card-edit-mode" style="display: none;" class="flex flex-col gap-2.5 w-full pt-1 pb-1">
+            <div class="flex items-center justify-between pb-1.5 border-b border-white/10">
+                <span class="text-xs font-semibold text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-pen-to-square text-[#2997ff]"></i>
+                    <span>마커 편집</span>
+                </span>
+                <button onclick="toggleEditMarkerMode(false)" class="w-7 h-7 rounded-full bg-white/10 text-white/70 hover:text-white flex items-center justify-center">
+                    <i class="fa-solid fa-xmark text-xs"></i>
                 </button>
             </div>
-        </div>
-
-        <!-- EDIT MODE (Simple & Intuitive Marker Editor) -->
-        <div id="spec-card-edit-mode" style="display: none;" class="flex flex-col gap-2.5">
             <div>
-                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">부품 명칭</label>
-                <input id="edit-marker-name" type="text" class="w-full bg-slate-900/90 text-slate-100 rounded-lg px-2.5 py-1.5 text-xs border border-slate-700 focus:border-blue-500 outline-none">
+                <label class="text-[10px] font-semibold text-white/60 uppercase tracking-wider block mb-1">부품 명칭</label>
+                <input id="edit-marker-name" type="text" class="w-full bg-black/60 text-white rounded-xl px-3 py-2 text-xs border border-white/15 focus:border-[#2997ff] outline-none">
             </div>
             <div>
-                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">설명 / 메모</label>
-                <textarea id="edit-marker-desc" rows="2" class="w-full bg-slate-900/90 text-slate-100 rounded-lg px-2.5 py-1.5 text-xs border border-slate-700 focus:border-blue-500 outline-none resize-none"></textarea>
+                <label class="text-[10px] font-semibold text-white/60 uppercase tracking-wider block mb-1">설명 / 메모</label>
+                <textarea id="edit-marker-desc" rows="2" class="w-full bg-black/60 text-white rounded-xl px-3 py-2 text-xs border border-white/15 focus:border-[#2997ff] outline-none resize-none"></textarea>
             </div>
-            <!-- Set Current Camera View Button -->
-            <button onclick="captureCurrentCameraForActiveMarker()" class="w-full py-1.5 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-blue-300 border border-blue-500/30 text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-all">
-                <i class="fa-solid fa-camera-rotate text-blue-400 text-xs"></i>
-                <span>현재 화면 각도를 이 핀의 포커스 시점으로 저장</span>
+            <!-- Set Current Camera View Button (Apple 36px outline pill) -->
+            <button onclick="captureCurrentCameraForActiveMarker()" class="w-full h-[36px] rounded-full bg-white/10 hover:bg-white/15 text-[#2997ff] border border-white/15 text-xs font-medium flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                <i class="fa-solid fa-camera-rotate text-xs"></i>
+                <span>현재 화면 각도를 포커스 시점으로 저장</span>
             </button>
             <!-- Save / Cancel Buttons -->
-            <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-800">
-                <button onclick="resetActiveMarkerToDefault()" class="text-[11px] text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors" title="이 마커를 공장 초기값으로 복구">
+            <div class="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                <button onclick="resetActiveMarkerToDefault()" class="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors">
                     <i class="fa-solid fa-rotate-left text-[10px]"></i>
                     <span>초기화</span>
                 </button>
                 <div class="flex items-center gap-2">
-                    <button onclick="toggleEditMarkerMode(false)" class="text-xs px-2.5 py-1 rounded-lg text-slate-400 hover:text-white bg-slate-800/80">취소</button>
-                    <button onclick="saveActiveMarkerChanges()" class="text-xs px-3.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center gap-1 active:scale-95 shadow-md transition-all">
+                    <button onclick="toggleEditMarkerMode(false)" class="apple-pill-36 bg-white/10 hover:bg-white/20 text-white/80">취소</button>
+                    <button onclick="saveActiveMarkerChanges()" class="apple-pill-36 bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium flex items-center gap-1 active:scale-95">
                         <i class="fa-solid fa-check text-[10px]"></i>
                         <span>저장</span>
                     </button>
@@ -2015,7 +2052,7 @@
             desc.innerText = marker.desc;
 
             toggleEditMarkerMode(false);
-            card.style.display = 'block';
+            card.style.display = 'flex';
             card.classList.remove('opacity-0', 'translate-y-4');
         }
 
@@ -2086,10 +2123,15 @@
             const editBtn = document.getElementById('btn-edit-marker');
             const editIcon = document.getElementById('icon-edit-marker');
 
+            const cardEl = document.getElementById('spec-card');
             if (isMarkerEditMode) {
+                if (cardEl) {
+                    cardEl.classList.remove('rounded-full', 'py-2.5');
+                    cardEl.classList.add('rounded-3xl', 'p-4');
+                }
                 if (viewMode) viewMode.style.display = 'none';
                 if (editMode) editMode.style.display = 'flex';
-                if (editBtn) editBtn.classList.add('text-blue-400');
+                if (editBtn) editBtn.classList.add('text-[#2997ff]');
                 if (editIcon) editIcon.className = 'fa-solid fa-eye text-xs';
 
                 // 현재 마커 데이터 인풋에 채우기
@@ -2102,9 +2144,13 @@
                     if (descInput) descInput.value = m.desc;
                 }
             } else {
-                if (viewMode) viewMode.style.display = 'block';
+                if (cardEl) {
+                    cardEl.classList.remove('rounded-3xl', 'p-4');
+                    cardEl.classList.add('rounded-full', 'py-2.5');
+                }
+                if (viewMode) viewMode.style.display = 'flex';
                 if (editMode) editMode.style.display = 'none';
-                if (editBtn) editBtn.classList.remove('text-blue-400');
+                if (editBtn) editBtn.classList.remove('text-[#2997ff]');
                 if (editIcon) editIcon.className = 'fa-solid fa-pen-to-square text-xs';
             }
         }
@@ -2218,19 +2264,19 @@
 
             if (isMarkersVisible) {
                 if (btn) {
-                    btn.classList.add('bg-blue-600/30', 'border-blue-500', 'text-blue-300');
-                    btn.classList.remove('bg-slate-900/80', 'text-slate-400', 'border-slate-800');
+                    btn.classList.add('bg-[#0071e3]', 'border-[#0071e3]', 'text-white');
+                    btn.classList.remove('bg-white/5', 'text-white/70', 'border-white/10');
                 }
-                if (icon) icon.className = 'fa-solid fa-location-dot text-blue-400';
+                if (icon) icon.className = 'fa-solid fa-location-dot text-white';
                 if (text) text.innerText = '3D 마커: ON';
                 if (layer) layer.style.display = 'block';
                 showMessage("3D 어노테이션 마커를 표시합니다.", "info", 1500);
             } else {
                 if (btn) {
-                    btn.classList.remove('bg-blue-600/30', 'border-blue-500', 'text-blue-300');
-                    btn.classList.add('bg-slate-900/80', 'text-slate-400', 'border-slate-800');
+                    btn.classList.remove('bg-[#0071e3]', 'border-[#0071e3]', 'text-white');
+                    btn.classList.add('bg-white/5', 'text-white/70', 'border-white/10');
                 }
-                if (icon) icon.className = 'fa-solid fa-location-pin-lock text-slate-500';
+                if (icon) icon.className = 'fa-solid fa-location-pin-lock text-white/50';
                 if (text) text.innerText = '3D 마커: OFF';
                 if (layer) layer.style.display = 'none';
                 closeSpecCard(false);
