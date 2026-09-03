@@ -401,9 +401,9 @@
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Quick Actions</span>
                     <div class="grid grid-cols-2 gap-2">
                         <!-- 3D Hotspot Markers Toggle Button -->
-                        <button onclick="toggleAnnotations()" id="btn-toggle-markers" class="ctrl-btn py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-blue-600/30 border border-blue-500 text-blue-300 hover:bg-slate-800 active:scale-95 col-span-2" title="Toggle 3D Hotspot Markers">
-                            <i id="icon-toggle-markers" class="fa-solid fa-location-dot text-blue-400"></i>
-                            <span id="text-toggle-markers">3D 마커: ON</span>
+                        <button onclick="toggleAnnotations()" id="btn-toggle-markers" class="ctrl-btn py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-slate-900/80 border border-slate-800 text-slate-400 hover:bg-slate-800 active:scale-95 col-span-2" title="Toggle 3D Hotspot Markers">
+                            <i id="icon-toggle-markers" class="fa-solid fa-location-pin-lock text-slate-500"></i>
+                            <span id="text-toggle-markers">3D 마커: OFF</span>
                         </button>
                         <!-- 360 Auto-Rotate Button -->
                         <button onclick="toggleAutoRotate()" id="btn-auto-rotate" class="ctrl-btn py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-blue-500/50 active:scale-95" title="Toggle 360 Auto Rotation">
@@ -430,7 +430,7 @@
     </div>
 
     <!-- Sketchfab-style 3D Annotation Overlay Layer -->
-    <div id="annotation-layer" class="fixed inset-0 pointer-events-none z-20 overflow-hidden">
+    <div id="annotation-layer" style="display: none;" class="fixed inset-0 pointer-events-none z-20 overflow-hidden">
         <!-- Dynamically managed 3D Billboard Numbered Pins -->
     </div>
 
@@ -1784,7 +1784,7 @@
          * 3D Annotation Hotspots & Cinematic Fly-To Engine (Sketchfab Style)
          * ==========================================
          */
-        let isMarkersVisible = true;
+        let isMarkersVisible = false;
         let activeMarkerId = null;
         let isCameraAnimating = false;
         let cameraAnimStart = 0;
