@@ -515,38 +515,39 @@
         <!-- Dynamically managed 3D Billboard Numbered Pins -->
     </div>
 
-    <!-- Responsive Technical Spec HUD Glass Card - Apple Reference Liquid Glass Pill -->
-    <div id="spec-card" style="display: none;" class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[calc(100vw-32px)] max-w-md apple-glass px-4 py-2.5 rounded-full z-50 pointer-events-auto transition-all duration-300">
-        <!-- VIEW MODE: Single-tier Ultra-Slim Floating Capsule -->
-        <div id="spec-card-view-mode" class="flex items-center justify-between gap-3 w-full">
-            <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                <span id="spec-card-badge" class="w-7 h-7 rounded-full bg-[#0071e3] text-white flex items-center justify-center text-xs font-semibold shrink-0 shadow-sm">01</span>
-                <div class="flex flex-col min-w-0">
-                    <h4 id="spec-card-title" class="text-xs font-semibold text-white truncate tracking-tight">Component Name</h4>
-                    <p id="spec-card-desc" class="text-[11px] text-white/70 truncate leading-none">
-                        Component description.
-                    </p>
+    <!-- Responsive Technical Spec HUD Glass Card - Apple Reference Liquid Glass -->
+    <div id="spec-card" style="display: none;" class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[calc(100vw-32px)] max-w-lg apple-glass px-4 py-3 rounded-2xl z-50 pointer-events-auto shadow-2xl transition-all duration-300">
+        <!-- VIEW MODE: 2-tier Clean & Readable Layout (No Truncation) -->
+        <div id="spec-card-view-mode" class="flex flex-col gap-2 w-full">
+            <!-- Top Header: Badge + Full Title + Action Icons -->
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span id="spec-card-badge" class="w-6 h-6 rounded-full bg-[#0071e3] text-white flex items-center justify-center text-xs font-semibold shrink-0 shadow-sm">01</span>
+                    <h4 id="spec-card-title" class="text-sm font-bold text-white tracking-tight">Component Name</h4>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button onclick="toggleEditMarkerMode()" id="btn-edit-marker" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center border border-white/10 transition-colors active:scale-95" title="수정">
+                        <i id="icon-edit-marker" class="fa-solid fa-pen-to-square text-xs"></i>
+                    </button>
+                    <button onclick="closeSpecCard(false)" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center border border-white/10 transition-colors active:scale-95" title="닫기">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
                 </div>
             </div>
-            
-            <div class="flex items-center gap-1.5 shrink-0">
-                <!-- 36px Apple Compact Pill: Return to Full View -->
-                <button onclick="closeSpecCard(true)" class="apple-pill-36 bg-[#0071e3] hover:bg-[#0077ed] text-white gap-1.5 active:scale-95 shadow-sm" title="전체 뷰 복귀">
+
+            <!-- Bottom: Full Description (No Cut-off) + Return to Full View Button -->
+            <div class="flex items-center justify-between gap-3 pt-1 border-t border-white/10">
+                <p id="spec-card-desc" class="text-xs text-white/85 leading-snug flex-1">
+                    Component description details.
+                </p>
+                <button onclick="closeSpecCard(true)" class="apple-pill-36 bg-[#0071e3] hover:bg-[#0077ed] text-white gap-1.5 shrink-0 active:scale-95 shadow-sm" title="전체 뷰 복귀">
                     <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
-                    <span class="whitespace-nowrap">복귀</span>
-                </button>
-                <!-- Subtle circular glass action: Edit -->
-                <button onclick="toggleEditMarkerMode()" id="btn-edit-marker" class="w-[36px] h-[36px] rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center border border-white/10 transition-colors active:scale-95" title="수정">
-                    <i id="icon-edit-marker" class="fa-solid fa-pen-to-square text-xs"></i>
-                </button>
-                <!-- Subtle circular glass action: Close -->
-                <button onclick="closeSpecCard(false)" class="w-[36px] h-[36px] rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center border border-white/10 transition-colors active:scale-95" title="닫기">
-                    <i class="fa-solid fa-xmark text-xs"></i>
+                    <span class="whitespace-nowrap font-medium text-xs">전체 뷰 복귀</span>
                 </button>
             </div>
         </div>
 
-        <!-- EDIT MODE (Expands to Card for editing) -->
+        <!-- EDIT MODE (Clean & Readable) -->
         <div id="spec-card-edit-mode" style="display: none;" class="flex flex-col gap-2.5 w-full pt-1 pb-1">
             <div class="flex items-center justify-between pb-1.5 border-b border-white/10">
                 <span class="text-xs font-semibold text-white flex items-center gap-1.5">
@@ -2309,12 +2310,7 @@
             const editBtn = document.getElementById('btn-edit-marker');
             const editIcon = document.getElementById('icon-edit-marker');
 
-            const cardEl = document.getElementById('spec-card');
             if (isMarkerEditMode) {
-                if (cardEl) {
-                    cardEl.classList.remove('rounded-full', 'py-2.5');
-                    cardEl.classList.add('rounded-3xl', 'p-4');
-                }
                 if (viewMode) viewMode.style.display = 'none';
                 if (editMode) editMode.style.display = 'flex';
                 if (editBtn) editBtn.classList.add('text-[#2997ff]');
@@ -2330,10 +2326,6 @@
                     if (descInput) descInput.value = m.desc;
                 }
             } else {
-                if (cardEl) {
-                    cardEl.classList.remove('rounded-3xl', 'p-4');
-                    cardEl.classList.add('rounded-full', 'py-2.5');
-                }
                 if (viewMode) viewMode.style.display = 'flex';
                 if (editMode) editMode.style.display = 'none';
                 if (editBtn) editBtn.classList.remove('text-[#2997ff]');
