@@ -59,24 +59,12 @@
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        #webcam-container.webcam-minimized {
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
-            bottom: 24px;
-            right: 24px;
-        }
-
-        #webcam-container.webcam-minimized #webcam-video,
-        #webcam-container.webcam-minimized #webcam-canvas {
-            opacity: 0.1;
-        }
-
-        #webcam-container.webcam-minimized .webcam-overlay {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(15, 23, 42, 0.8);
+        #webcam-container.webcam-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: scale(0.8) !important;
+            visibility: hidden !important;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
         }
 
         #webcam-video {
@@ -1774,25 +1762,19 @@
          */
         function toggleWebcam() {
             const container = document.getElementById('webcam-container');
-            const icon = document.getElementById('webcam-toggle-icon');
-            const handle = document.getElementById('webcam-resize-handle');
+            const showBtn = document.getElementById('btn-show-webcam');
             
             isWebcamMinimized = !isWebcamMinimized;
+            triggerHaptic(25);
             
             if (isWebcamMinimized) {
-                container.classList.add('webcam-minimized');
-                container.style.width = '';
-                container.style.height = '';
-                if (handle) handle.style.display = 'none';
-                icon.className = 'fa-solid fa-chevron-up text-[10px]';
-                showMessage("웹캠 피드를 최소화합니다.", "info", 1200);
+                container.classList.add('webcam-hidden');
+                if (showBtn) showBtn.classList.remove('hidden');
+                showMessage("웹캠 PIP를 숨겼습니다. (손 추적은 백그라운드에서 유지됩니다)", "info", 2000);
             } else {
-                container.classList.remove('webcam-minimized');
-                container.style.width = webcamWidth + 'px';
-                container.style.height = webcamHeight + 'px';
-                if (handle) handle.style.display = 'flex';
-                icon.className = 'fa-solid fa-chevron-down text-[10px]';
-                showMessage("웹캠 피드를 전체 활성화합니다.", "info", 1200);
+                container.classList.remove('webcam-hidden');
+                if (showBtn) showBtn.classList.add('hidden');
+                showMessage("웹캠 PIP를 다시 표시합니다.", "info", 1500);
             }
         }
 
