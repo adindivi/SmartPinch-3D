@@ -411,6 +411,23 @@
                     </div>
                 </div>
 
+                <!-- Quick Actions: 360 Auto-Rotate & Snapshot Capture -->
+                <div class="flex flex-col gap-2 border-t border-slate-800/60 pt-3">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Quick Actions</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- 360 Auto-Rotate Button -->
+                        <button onclick="toggleAutoRotate()" id="btn-auto-rotate" class="ctrl-btn py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-blue-500/50 active:scale-95" title="Toggle 360 Auto Rotation">
+                            <i id="icon-auto-rotate" class="fa-solid fa-arrows-rotate text-blue-400"></i>
+                            <span id="text-auto-rotate">360° Rotate</span>
+                        </button>
+                        <!-- Capture Snapshot Button -->
+                        <button onclick="captureSnapshot()" id="btn-capture" class="ctrl-btn py-2 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all bg-slate-900/80 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-emerald-500/50 active:scale-95" title="Capture PNG Snapshot">
+                            <i class="fa-solid fa-camera text-emerald-400"></i>
+                            <span>Capture</span>
+                        </button>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -496,6 +513,10 @@
         };
 
         // AR 고정(Lock) 버튼 제어 전역 변수
+        let isAutoRotating = false;         // 360도 자동 회전 턴테이블 활성화 여부
+        const autoRotateSpeed = 0.012;      // 프레임당 회전 각속도
+        let isDragging = false;             // 마우스 드래그 조작 여부
+        let touchMode = null;               // 모바일 터치 모드 ('rotate' | 'pinch_pan')
         let isLocked = false;               // 차량 회전/이동/줌 조작 잠금 여부
         let isFingerOverButton = false;     // 손가락이 가상 AR 버튼 영역에 들어왔는지 여부
         let buttonHoverStartTime = 0;       // 버튼 호버가 감지되기 시작한 타임스태프
@@ -518,7 +539,7 @@
             camera.lookAt(0, 0, 0);
 
             // 3. Renderer 설정: 3D 데이터를 2D 화면에 그려주는 화가 역할 & sRGB 색보정 활성화
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setClearColor(0x0b0f19, 0); // 어두운 투명 클리어 컬러 지정
             renderer.setPixelRatio(window.devicePixelRatio);
@@ -851,6 +872,11 @@
         function animate3D() {
             requestAnimationFrame(animate3D);
 
+            // 360도 Y축 자동 회전 (조작 중이 아닐 때 부드럽게 턴테이블 회전)
+            if (isAutoRotating && !isLocked && !isRightPinching && !isLeftPinching && !isTwoHandPinching && !isDragging && !touchMode) {
+                targetRotationY += autoRotateSpeed;
+            }
+
             // Lerp 연산으로 움직임을 고급스럽고 묵직하게 보정
             currentRotationX += (targetRotationX - currentRotationX) * easing;
             currentRotationY += (targetRotationY - currentRotationY) * easing;
@@ -930,7 +956,7 @@
             isMouseControlEnabled = true;
 
             const container = document.getElementById('canvas-container');
-            let isDragging = false;
+            isDragging = false;
             let isPanning = false;
             let previousMousePosition = { x: 0, y: 0 };
             let zoomTimeout;
