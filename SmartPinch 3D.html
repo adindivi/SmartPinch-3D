@@ -1688,7 +1688,87 @@
 
 
 
+                /**
+         * [함수] toggleAutoRotate()
+         * 3D 차량 360도 자동 회전(Turntable) 토글 함수
+         */
+        function toggleAutoRotate() {
+            isAutoRotating = !isAutoRotating;
+            triggerHaptic(30);
+            
+            const btn = document.getElementById('btn-auto-rotate');
+            const icon = document.getElementById('icon-auto-rotate');
+            const text = document.getElementById('text-auto-rotate');
+            
+            if (isAutoRotating) {
+                if (btn) {
+                    btn.classList.add('border-blue-500', 'bg-blue-600/30', 'text-blue-300');
+                    btn.classList.remove('bg-slate-900/80', 'text-slate-200');
+                }
+                if (icon) icon.classList.add('fa-spin');
+                if (text) text.innerText = "Rotating...";
+                showMessage("360° 자동 회전 활성화", "info", 2000);
+            } else {
+                if (btn) {
+                    btn.classList.remove('border-blue-500', 'bg-blue-600/30', 'text-blue-300');
+                    btn.classList.add('bg-slate-900/80', 'text-slate-200');
+                }
+                if (icon) icon.classList.remove('fa-spin');
+                if (text) text.innerText = "360° Rotate";
+                showMessage("360° 자동 회전 정지", "info", 2000);
+            }
+        }
+
         /**
+         * [함수] captureSnapshot()
+         * 3D CAD 뷰포트를 고해상도 PNG로 캡처하여 갤러리에 저장하거나 다운로드합니다.
+         */
+        function captureSnapshot() {
+            triggerHaptic([50, 50, 80]);
+            showMessage("3D CAD 뷰포트 캡처 중...", "info", 1200);
+
+            try {
+                // 1. Three.js 프레임 강제 렌더링
+                renderer.render(scene, camera);
+                
+                // 2. WebGL Canvas에서 고품질 PNG 이미지 데이터 추출
+                const dataUrl = renderer.domElement.toDataURL('image/png');
+                const now = new Date();
+                const pad = (n) => String(n).padStart(2, '0');
+                const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+                const fileName = `SmartPinch3D_${timestamp}.png`;
+
+                // 3. 안드로이드 네이티브 브릿지 (MainActivity.kt - WebAppInterface.saveImage) 호출
+                if (window.AndroidApp && typeof window.AndroidApp.saveImage === 'function') {
+                    window.AndroidApp.saveImage(dataUrl, fileName);
+                    showMessage(`갤러리에 저장 완료: ${fileName}`, "success", 3000);
+                } else {
+                    // 웹 브라우저 Fallback 다운로드
+                    const link = document.createElement('a');
+                    link.download = fileName;
+                    link.href = dataUrl;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    showMessage(`스크린샷 저장 완료: ${fileName}`, "success", 3000);
+                }
+
+                // 4. 시각적 카메라 셔터 플래시 효과
+                const flash = document.createElement('div');
+                flash.className = 'fixed inset-0 bg-white pointer-events-none z-[999] transition-opacity duration-300 opacity-60';
+                document.body.appendChild(flash);
+                setTimeout(() => {
+                    flash.style.opacity = '0';
+                    setTimeout(() => flash.remove(), 300);
+                }, 50);
+
+            } catch (err) {
+                console.error("Capture snapshot error:", err);
+                showMessage("캡처 중 오류가 발생했습니다.", "error", 3000);
+            }
+        }
+
+/**
          * [함수] toggleWebcam()
          * 웹캠 PIP 피드 접기/펼치기 토글 함수
          */
