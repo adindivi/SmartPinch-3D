@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Glowing Cyan/Blue Isometric Cube Top Face -->
+    <path
+        android:pathData="M54,26 L78,40 L54,54 L30,40 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="30"
+                android:startY="26"
+                android:endX="78"
+                android:endY="54"
+                android:type="linear">
+                <item android:color="#60A5FA" android:offset="0.0" />
+                <item android:color="#3B82F6" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Isometric Cube Left Face -->
+    <path
+        android:pathData="M30,40 L54,54 L54,82 L30,68 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="30"
+                android:startY="40"
+                android:endX="54"
+                android:endY="82"
+                android:type="linear">
+                <item android:color="#2563EB" android:offset="0.0" />
+                <item android:color="#1D4ED8" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Isometric Cube Right Face -->
+    <path
+        android:pathData="M54,54 L78,40 L78,68 L54,82 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="54"
+                android:startY="40"
+                android:endX="78"
+                android:endY="82"
+                android:type="linear">
+                <item android:color="#1E40AF" android:offset="0.0" />
+                <item android:color="#0F172A" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Inner CAD Wireframe Accents -->
+    <path
+        android:pathData="M54,26 L78,40 L78,68 L54,82 L30,68 L30,40 Z"
+        android:strokeColor="#93C5FD"
+        android:strokeWidth="1.5" />
+
+    <path
+        android:pathData="M54,54 L54,82 M54,54 L78,40 M54,54 L30,40"
+        android:strokeColor="#60A5FA"
+        android:strokeWidth="1.5" />
+
+    <!-- Pinch AI Touch Nodes (Emerald & Purple indicators) -->
+    <path
+        android:pathData="M54,26 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"
+        android:fillColor="#10B981" />
+
+    <path
+        android:pathData="M78,40 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"
+        android:fillColor="#A855F7" />
+
+    <path
+        android:pathData="M30,40 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0"
+        android:fillColor="#38BDF8" />
+</vector>

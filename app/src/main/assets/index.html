@@ -1,0 +1,2104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Smart Pinch 3D CAD Viewer</title>
+    <!-- Tailwind CSS for UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19; /* Deep Slate 950 - CAD Dark theme */
+            color: #f8fafc;
+            overflow: hidden; /* Prevent scrolling */
+            margin: 0;
+            padding: 0;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            touch-action: none; /* 3D 드래그 제스처 오버라이드를 위해 캔버스에만 제한 */
+        }
+
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            pointer-events: none; /* Let clicks pass through to canvas if needed */
+        }
+
+        /* PIP Webcam View */
+        #webcam-container {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            width: 280px;
+            height: 210px;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 2px solid #334155;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+            background-color: #000;
+            pointer-events: auto;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        #webcam-container.webcam-minimized {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            bottom: 24px;
+            right: 24px;
+        }
+
+        #webcam-container.webcam-minimized #webcam-video,
+        #webcam-container.webcam-minimized #webcam-canvas {
+            opacity: 0.1;
+        }
+
+        #webcam-container.webcam-minimized .webcam-overlay {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        #webcam-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Mirror effect */
+            transition: opacity 0.3s;
+        }
+
+        #webcam-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+            transition: opacity 0.3s;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* Custom Scrollbar for messages */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15); 
+            border-radius: 10px;
+        }
+
+        .pinch-active-rotate {
+            border-color: #10b981 !important; /* Emerald 500 */
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.6) !important;
+        }
+
+        .pinch-active-pan {
+            border-color: #f59e0b !important; /* Amber 500 */
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.6) !important;
+        }
+        
+        .pinch-active-zoom {
+            border-color: #a855f7 !important; /* Purple 500 */
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.6) !important;
+        }
+        
+        .pinch-inactive {
+            border-color: #475569 !important; /* Slate 600 */
+            transition: all 0.3s ease;
+        }
+
+        /* Interactive controls styling */
+        .ctrl-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #94a3b8;
+        }
+        .ctrl-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #f8fafc;
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        .ctrl-btn.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            color: #60a5fa;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
+        }
+
+        /* 모바일 웹뷰에서 터치 클릭 및 선택이 작동하도록 widget 예외 명시 */
+        select, input, label, button, .ctrl-btn {
+            touch-action: auto !important;
+            pointer-events: auto !important;
+            -webkit-user-select: auto !important;
+            user-select: auto !important;
+        }
+
+        /* 패널 접기/펼치기용 transition 및 collapsed 효과 */
+        #left-panel {
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #right-panel {
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .panel-collapsed-left {
+            transform: translateX(-110%);
+        }
+        .panel-collapsed-right {
+            transform: translateX(110%);
+        }
+
+        /* 플로팅 열기 버튼 공통 스타일 */
+        .floating-trigger-btn {
+            position: absolute;
+            top: 24px;
+            z-index: 50;
+            pointer-events: none;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .floating-trigger-btn.active {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+
+        /* 모바일 안드로이드 화면 최적화 스타일 */
+        @media (max-width: 840px) {
+            #ui-layer {
+                padding: 12px !important;
+                pointer-events: none !important;
+            }
+            .top-panels-row {
+                display: block !important;
+                position: static !important;
+                pointer-events: none !important;
+            }
+            #left-panel {
+                position: fixed !important;
+                top: 16px !important;
+                left: 16px !important;
+                width: calc(100vw - 32px) !important;
+                max-width: 320px !important;
+                max-height: calc(100vh - 32px) !important;
+                overflow-y: auto !important;
+                z-index: 60 !important;
+                pointer-events: auto !important;
+            }
+            #right-panel {
+                position: fixed !important;
+                top: 16px !important;
+                right: 16px !important;
+                width: calc(100vw - 32px) !important;
+                max-width: 300px !important;
+                max-height: calc(100vh - 32px) !important;
+                overflow-y: auto !important;
+                z-index: 60 !important;
+                pointer-events: auto !important;
+            }
+            #webcam-container {
+                width: 140px;
+                height: 105px;
+                bottom: 16px;
+                right: 16px;
+            }
+            .floating-trigger-btn {
+                top: 16px !important;
+                z-index: 50 !important;
+            }
+            #btn-open-left {
+                left: 16px !important;
+            }
+            #btn-open-right {
+                right: 16px !important;
+            }
+        }
+    </style>
+
+    <!-- Three.js for 3D Rendering & Loaders -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    
+    <!-- MediaPipe Hands for Gesture Recognition -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <!-- 3D Canvas Background -->
+    <div id="canvas-container"></div>
+
+    <!-- Floating Panel Open Triggers (Hidden by default, shown when panel is collapsed) -->
+    <button onclick="toggleLeftPanel()" id="btn-open-left" class="floating-trigger-btn left-6 glass-panel w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 hover:text-slate-100 hover:bg-slate-800/80 border border-slate-700 pointer-events-auto shadow-lg active" title="Open Controls">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    <button onclick="toggleRightPanel()" id="btn-open-right" class="floating-trigger-btn right-6 glass-panel w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 hover:text-slate-100 hover:bg-slate-800/80 border border-slate-700 pointer-events-auto shadow-lg active" title="Open Settings">
+        <i class="fa-solid fa-sliders"></i>
+    </button>
+
+    <!-- UI Layer -->
+    <div id="ui-layer" class="flex flex-col justify-between p-6">
+        
+        <!-- Top & Panels Row -->
+        <div class="top-panels-row flex justify-between items-start w-full pointer-events-auto gap-6">
+            <!-- Left Side Control Panel -->
+            <div id="left-panel" class="glass-panel p-5 rounded-2xl shadow-2xl max-w-sm flex flex-col gap-4 panel-collapsed-left">
+                <div class="flex justify-between items-center w-full">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-cube text-blue-500 text-2xl"></i>
+                        <div>
+                            <h1 class="text-lg font-bold tracking-wide text-slate-100">Smart Pinch 3D</h1>
+                            <p class="text-[10px] text-blue-400 font-semibold tracking-widest uppercase">CAD Viewer Pro</p>
+                        </div>
+                    </div>
+                    <button onclick="toggleLeftPanel()" class="text-slate-400 hover:text-slate-200 transition-colors w-6 h-6 flex items-center justify-center rounded-lg hover:bg-slate-800/50" title="Collapse Panel">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
+                </div>
+                
+                <p class="text-slate-300 text-xs leading-relaxed border-t border-slate-800 pt-3">
+                    AI 비전 제스처 기술로 3D 차량 모델을 직관적으로 조작할 수 있습니다. 
+                </p>
+
+                <!-- Gesture Guide -->
+                <div class="space-y-2 text-[11px] text-slate-400 bg-slate-900/40 p-3 rounded-lg border border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                        <span>한 손 Pinch: 잡은 채 이동하여 <b>회전 (Rotate)</b></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                        <span>양손 Pinch: 간격을 조절하여 <b>확대/축소 (Zoom)</b></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                        <span>마우스 조작: 우클릭/Shift+드래그로 <b>이동 (Pan)</b></span>
+                    </div>
+                </div>
+
+                <!-- Camera View Presets -->
+                <div class="flex flex-col gap-2">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Camera View Presets</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setViewPreset('front')" class="ctrl-btn py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 active" id="btn-view-front">
+                            <i class="fa-solid fa-square"></i> Front (정면)
+                        </button>
+                        <button onclick="setViewPreset('side')" class="ctrl-btn py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2" id="btn-view-side">
+                            <i class="fa-solid fa-square-caret-right"></i> Side (측면)
+                        </button>
+                        <button onclick="setViewPreset('top')" class="ctrl-btn py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2" id="btn-view-top">
+                            <i class="fa-solid fa-square-caret-up"></i> Top (윗면)
+                        </button>
+                        <button onclick="setViewPreset('iso')" class="ctrl-btn py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2" id="btn-view-iso">
+                            <i class="fa-solid fa-cube"></i> Isometric
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3D Model Selection -->
+                <div class="flex flex-col gap-2 border-t border-slate-800 pt-3">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">3D Model Selection</span>
+                    <div class="flex flex-col gap-2 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800">
+                        <!-- Dropdown Select -->
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[10px] font-semibold text-slate-300"><i class="fa-solid fa-folder-open text-blue-400 mr-1"></i> PRESET</span>
+                            <select onchange="loadModelByUrl(this.value)" id="model-preset-select" class="bg-slate-950 text-slate-200 border border-slate-800 text-[10px] rounded px-1.5 py-1 focus:outline-none focus:border-blue-500 w-[130px]">
+                                <option value="fallback" selected>DEMO (Box Car)</option>
+                                <option value="models/2026_ferrari_849_testarossa.glb">External (Ferrari)</option>
+                            </select>
+                        </div>
+                        <!-- File Upload -->
+                        <div class="flex items-center justify-between gap-2 border-t border-slate-800/60 pt-2">
+                            <span class="text-[10px] font-semibold text-slate-300"><i class="fa-solid fa-file-import text-emerald-400 mr-1"></i> UPLOAD (.glb)</span>
+                            <label class="cursor-pointer bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800 text-[10px] rounded px-2 py-1 text-center w-[130px] font-semibold transition-colors truncate">
+                                Browse File
+                                <input type="file" id="model-file-input" accept=".glb,.gltf" class="hidden" onchange="handleLocalModelUpload(this)">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gesture Customizer Settings -->
+                <div class="flex flex-col gap-2 border-t border-slate-800 pt-3">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gesture Customizer (3초 홀드)</span>
+                    <div class="flex flex-col gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800">
+                        <!-- 1 Finger -->
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[10px] font-semibold text-slate-300"><i class="fa-solid fa-hand-point-up text-blue-400 mr-1"></i> 1 FINGER</span>
+                            <select onchange="updateGestureMap(1, this.value)" id="gmap-1" class="bg-slate-900 text-slate-200 border border-slate-800 text-[10px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 max-w-[130px]">
+                                <option value="reset">Reset View (초기화)</option>
+                                <option value="explode">Explode (분해)</option>
+                                <option value="clipping">Section Cut (단면)</option>
+                                <option value="xray">X-Ray Mode (엑스레이)</option>
+                            </select>
+                        </div>
+                        <!-- 2 Fingers -->
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[10px] font-semibold text-slate-300"><i class="fa-solid fa-hand-scissors text-emerald-400 mr-1"></i> 2 FINGERS</span>
+                            <select onchange="updateGestureMap(2, this.value)" id="gmap-2" class="bg-slate-900 text-slate-200 border border-slate-800 text-[10px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 max-w-[130px]">
+                                <option value="reset">Reset View (초기화)</option>
+                                <option value="explode" selected>Explode (분해)</option>
+                                <option value="clipping">Section Cut (단면)</option>
+                                <option value="xray">X-Ray Mode (엑스레이)</option>
+                            </select>
+                        </div>
+                        <!-- 3 Fingers -->
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[10px] font-semibold text-slate-300"><i class="fa-solid fa-hand-sparkles text-amber-400 mr-1"></i> 3 FINGERS</span>
+                            <select onchange="updateGestureMap(3, this.value)" id="gmap-3" class="bg-slate-900 text-slate-200 border border-slate-800 text-[10px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 max-w-[130px]">
+                                <option value="reset">Reset View (초기화)</option>
+                                <option value="explode">Explode (분해)</option>
+                                <option value="clipping" selected>Section Cut (단면)</option>
+                                <option value="xray">X-Ray Mode (엑스레이)</option>
+                            </select>
+                        </div>
+                        <!-- 4 Fingers -->
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[10px] font-semibold text-slate-300"><i class="fa-solid fa-hand text-purple-400 mr-1"></i> 4 FINGERS</span>
+                            <select onchange="updateGestureMap(4, this.value)" id="gmap-4" class="bg-slate-900 text-slate-200 border border-slate-800 text-[10px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 max-w-[130px]">
+                                <option value="reset">Reset View (초기화)</option>
+                                <option value="explode">Explode (분해)</option>
+                                <option value="clipping">Section Cut (단면)</option>
+                                <option value="xray" selected>X-Ray Mode (엑스레이)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side Control Panel -->
+            <div id="right-panel" class="glass-panel p-5 rounded-2xl shadow-2xl min-w-[280px] flex flex-col gap-4 panel-collapsed-right">
+                <!-- System Status Header with Minimize -->
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider">System Status</span>
+                        <i id="status-icon" class="fa-solid fa-circle-notch fa-spin text-amber-400"></i>
+                    </div>
+                    <button onclick="toggleRightPanel()" class="text-slate-400 hover:text-slate-200 transition-colors w-6 h-6 flex items-center justify-center rounded-lg hover:bg-slate-800/50" title="Collapse Panel">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-y-1.5 text-xs text-slate-300">
+                    <span class="text-slate-400">Hand Tracking</span>
+                    <span id="track-status" class="text-amber-400 font-mono text-right">Initializing...</span>
+                    
+                    <span class="text-slate-400">Action State</span>
+                    <span id="pinch-status" class="text-slate-500 font-mono text-right font-semibold">OFF</span>
+
+                    <span class="text-slate-400">Rotation Y</span>
+                    <span id="rot-y" class="text-blue-300 font-mono text-right">0.0°</span>
+
+                    <span class="text-slate-400">Scale (Zoom)</span>
+                    <span id="scale-val" class="text-purple-300 font-mono text-right">100%</span>
+                </div>
+
+                <!-- Rendering Modes -->
+                <div class="flex flex-col gap-2">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rendering Modes</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setRenderMode('solid')" class="ctrl-btn py-1.5 px-2 rounded-lg text-xs font-semibold active" id="btn-render-solid">Solid</button>
+                        <button onclick="setRenderMode('wireframe')" class="ctrl-btn py-1.5 px-2 rounded-lg text-xs font-semibold" id="btn-render-wireframe">Wireframe</button>
+                        <button onclick="setRenderMode('xray')" class="ctrl-btn py-1.5 px-2 rounded-lg text-xs font-semibold" id="btn-render-xray">X-Ray</button>
+                        <button onclick="setRenderMode('hologram')" class="ctrl-btn py-1.5 px-2 rounded-lg text-xs font-semibold" id="btn-render-hologram">Hologram</button>
+                    </div>
+                </div>
+
+                <!-- Lighting Adjustments -->
+                <div class="flex flex-col gap-2.5">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Lighting Control</span>
+                    <div class="flex flex-col gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/50">
+                        <!-- Ambient Light Slider -->
+                        <div class="flex flex-col gap-1">
+                            <div class="flex justify-between items-center text-[11px]">
+                                <span class="text-slate-400">Ambient Light</span>
+                                <span id="val-ambient" class="text-slate-300 font-mono">0.6</span>
+                            </div>
+                            <input type="range" id="slide-ambient" min="0.0" max="2.0" step="0.1" value="0.6" oninput="updateAmbientIntensity(this.value)" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                        </div>
+                        <!-- Directional Light Slider -->
+                        <div class="flex flex-col gap-1">
+                            <div class="flex justify-between items-center text-[11px]">
+                                <span class="text-slate-400">Directional Light</span>
+                                <span id="val-dir" class="text-slate-300 font-mono">1.2</span>
+                            </div>
+                            <input type="range" id="slide-dir" min="0.0" max="3.0" step="0.1" value="1.2" oninput="updateDirectionalIntensity(this.value)" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Notification Message Box -->
+        <div id="message-box" class="absolute top-6 left-1/2 transform -translate-x-1/2 glass-panel px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 transition-opacity duration-500 opacity-0 pointer-events-auto">
+            <i class="fa-solid fa-circle-info text-blue-400"></i>
+            <span id="message-text" class="text-sm font-medium">메시지</span>
+        </div>
+
+    </div>
+
+    <!-- Webcam PIP Container -->
+    <div id="webcam-container" class="pinch-inactive flex flex-col justify-end">
+        <!-- Resize Handle (Top-Left corner) - 모바일 터치 친화적 32x32px 크기 -->
+        <div id="webcam-resize-handle" class="absolute top-0 left-0 w-8 h-8 cursor-nwse-resize z-30 flex items-center justify-center text-slate-300 hover:text-white bg-slate-900/90 rounded-br-xl border-r border-b border-slate-700 pointer-events-auto shadow-md transition-colors active:bg-blue-600" title="Drag to Resize">
+            <i class="fa-solid fa-expand text-xs"></i>
+        </div>
+
+        <video id="webcam-video" autoplay playsinline muted></video>
+        <canvas id="webcam-canvas"></canvas>
+        <div class="webcam-overlay absolute inset-0 pointer-events-none transition-opacity duration-300"></div>
+        
+        <!-- Minimise webcam click area -->
+        <button onclick="toggleWebcam()" class="absolute top-2 right-2 bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 w-7 h-7 rounded-full flex items-center justify-center border border-slate-700 pointer-events-auto shadow-md active:bg-blue-600" title="Toggle Webcam">
+            <i id="webcam-toggle-icon" class="fa-solid fa-chevron-down text-[10px]"></i>
+        </button>
+    </div>
+
+    <script>
+        /**
+         * ==========================================
+         * 1. Three.js 3D Scene Setup (자동차 모델 렌더링)
+         * ==========================================
+         */
+        
+        let scene, camera, renderer, carGroup;
+        
+        let targetRotationX = 0;
+        let targetRotationY = 0;
+        let currentRotationX = 0;
+        let currentRotationY = 0;
+        
+        let targetScale = 1; 
+        let currentScale = 0.1; // 초기 등장 애니메이션 효과를 위해 0.1에서 시작
+        
+        // Pan (평행 이동) 제어 변수
+        let targetPanX = 0;
+        let targetPanY = 0;
+        let currentPanX = 0;
+        let currentPanY = 0;
+
+        const easing = 0.1;
+
+        // 조명 및 재질 관련 전역 변수
+        let ambientLight, dirLight, backLight, spotLight;
+        const originalMaterials = new Map(); // 원래 재질 복원용 백업 맵
+        let currentRenderMode = 'solid';
+        let isWebcamMinimized = false;
+        let webcamWidth = 280;              // PIP 가로 기본 크기
+        let webcamHeight = 210;             // PIP 세로 기본 크기 (4:3 비율)
+        let isLeftPanelCollapsed = true;
+        let isRightPanelCollapsed = true;
+
+        // 제스처 홀드 타이머 및 3D CAD 액션 제어 전역 변수
+        let activeGesture = -1;       // 현재 유지 중인 손가락 개수 (1~4)
+        let gestureStartTime = 0;     // 해당 제스처 시작 시점
+        let gestureTriggered = false; // 액션 실행 여부 플래그
+        let isExploded = false;       // 폭파 상태 여부
+        let explodeProgress = 0;      // 폭파 진행률 (0.0 ~ 1.0)
+        let isClippingActive = false; // 단면 보기 상태 여부
+        const localPlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0.0); // X축 절단 평면
+
+        // 손가락 개수별 동적 제스처 액션 매핑 객체
+        let gestureMapping = {
+            1: 'reset',     // 1 FINGER: 뷰 초기화
+            2: 'explode',   // 2 FINGERS: 폭파 / 조립
+            3: 'clipping',  // 3 FINGERS: 단면 절단
+            4: 'xray'       // 4 FINGERS: X-Ray 모드
+        };
+
+        // AR 고정(Lock) 버튼 제어 전역 변수
+        let isLocked = false;               // 차량 회전/이동/줌 조작 잠금 여부
+        let isFingerOverButton = false;     // 손가락이 가상 AR 버튼 영역에 들어왔는지 여부
+        let buttonHoverStartTime = 0;       // 버튼 호버가 감지되기 시작한 타임스태프
+        let buttonActionTriggered = false;  // 3초 락 토글이 실행 완료되었는지 플래그
+
+        /**
+         * [함수] init3D()
+         * 3D 그래픽 환경(씬, 카메라, 렌더러, 조명)을 초기 설정하는 함수
+         */
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+
+            // 1. Scene 설정: 깊이 다크 테마 안개 및 어두운 배경 적용
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x0b0f19, 0.015);
+
+            // 2. Camera 설정
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 3, 10);
+            camera.lookAt(0, 0, 0);
+
+            // 3. Renderer 설정: 3D 데이터를 2D 화면에 그려주는 화가 역할 & sRGB 색보정 활성화
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x0b0f19, 0); // 어두운 투명 클리어 컬러 지정
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            renderer.outputEncoding = THREE.sRGBEncoding; // sRGB 감마 색상 보정 활성화
+            renderer.localClippingEnabled = true; // 단면 렌더링 활성화
+            container.appendChild(renderer.domElement);
+
+            // 4. Lights: HemisphereLight 및 기본 다방향 조명 세팅
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); // 간접 하늘광
+            hemiLight.position.set(0, 20, 0);
+            scene.add(hemiLight);
+
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // 기본 밝기 (슬라이더로 조절 가능)
+            scene.add(ambientLight);
+
+            dirLight = new THREE.DirectionalLight(0xffffff, 1.2); // 주 조명 (슬라이더로 조절 가능)
+            dirLight.position.set(5, 10, 5);
+            scene.add(dirLight);
+
+            backLight = new THREE.DirectionalLight(0xffffff, 0.6); // 보조 백라이트
+            backLight.position.set(-5, 5, -5);
+            scene.add(backLight);
+
+            // 5. Grid Helper: 바닥의 격자무늬 (어두운 테마 복원)
+            const gridHelper = new THREE.GridHelper(20, 20, 0x334155, 0x1e293b);
+            gridHelper.position.y = -1.5;
+            scene.add(gridHelper);
+
+            // 자동차 모델 생성 함수 호출
+            createCarModel();
+
+            // 브라우저 리사이즈 대응
+            window.addEventListener('resize', onWindowResize, false);
+            
+            // 매 프레임 루프 가동
+            animate3D();
+        }
+
+        /**
+         * [함수] clearCarGroup()
+         * carGroup 내의 기존 모든 메쉬와 오브젝트들을 안전하게 제거하여 메모리 누수를 방지합니다.
+         */
+        function clearCarGroup() {
+            if (!carGroup) return;
+            while (carGroup.children.length > 0) {
+                const child = carGroup.children[0];
+                carGroup.remove(child);
+            }
+            originalMaterials.clear();
+        }
+
+        /**
+         * [함수] loadModelByUrl(url)
+         * 선택된 URL의 3D 모델을 비동기로 로드하여 뷰어에 배치합니다.
+         */
+        function loadModelByUrl(url) {
+            if (url === 'fallback') {
+                clearCarGroup();
+                createFallbackCar();
+                setRenderMode(currentRenderMode); // 현재 렌더 모드 재적용
+                // 애니메이션 연산을 위해 스케일 초기화
+                currentScale = 0.1;
+                targetScale = 1.0;
+                showMessage("기본 데모 모델을 불러왔습니다.", "success", 2500);
+                return;
+            }
+
+            showMessage("3D 모델 파일을 불러오는 중...", "info", 2000);
+            const gltfLoader = new THREE.GLTFLoader();
+            
+            gltfLoader.load(url,
+                (gltf) => {
+                    clearCarGroup();
+                    handleLoadedModel(gltf.scene);
+                    setRenderMode(currentRenderMode); // 렌더 모드 적용
+                    currentScale = 0.1;
+                    targetScale = 1.0;
+                    showMessage("새로운 3D 모델을 성공적으로 로드했습니다!", "success", 2500);
+                },
+                (xhr) => {
+                    if (xhr.total > 0) {
+                        const percent = Math.round((xhr.loaded / xhr.total) * 100);
+                        showMessage(`다운로드 중: ${percent}%`, "info", 0);
+                    }
+                },
+                (err) => {
+                    console.error("3D model load failed:", err);
+                    showMessage("모델 로드 실패. 파일 경로를 확인해 주세요.", "error", 4000);
+                }
+            );
+        }
+
+        /**
+         * [함수] handleLocalModelUpload(inputElement)
+         * 사용자가 모바일 또는 PC에서 직접 선택한 로컬 .glb/.gltf 파일을 파싱하여 로드합니다.
+         */
+        function handleLocalModelUpload(inputElement) {
+            const files = inputElement.files;
+            if (!files || files.length === 0) return;
+            
+            const file = files[0];
+            showMessage(`${file.name} 분석 및 파싱 중...`, "info", 0);
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const contents = e.target.result;
+                const gltfLoader = new THREE.GLTFLoader();
+                
+                // ArrayBuffer 형식의 데이터를 파싱
+                gltfLoader.parse(contents, '', 
+                    (gltf) => {
+                        clearCarGroup();
+                        handleLoadedModel(gltf.scene);
+                        setRenderMode(currentRenderMode); // 현재 렌더링 스타일 입히기
+                        currentScale = 0.1;
+                        targetScale = 1.0;
+                        showMessage(`로컬 파일 로드 성공: ${file.name}`, "success", 3000);
+                    },
+                    (err) => {
+                        console.error("Local GLB parse error:", err);
+                        showMessage("파일 파싱 실패. 유효한 glb/gltf 파일이 아닙니다.", "error", 4000);
+                    }
+                );
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        /**
+         * [함수] createCarModel()
+         * 외부 3D 모델(models/car.glb) 로드를 먼저 시도하고,
+         * 파일이 없으면 정교하게 업그레이드된 자체 데모 차량 모델을 로드합니다.
+         */
+        function createCarModel() {
+            carGroup = new THREE.Group(); 
+            scene.add(carGroup);
+
+            // 기본 DEMO 모드: 기본 데모 박스 카로 시작
+            createFallbackCar();
+            showMessage("기본 데모 박스 카(DEMO Mode)가 적용되었습니다.", "info", 2000);
+        }
+
+        /**
+         * [함수] loadExternalModel()
+         * models 폴더 내의 car.glb 또는 car.gltf를 순차적으로 로드 시도
+         */
+        function loadExternalModel() {
+            const gltfLoader = new THREE.GLTFLoader();
+            const glbPath = 'models/2026_ferrari_849_testarossa.glb';
+            const gltfPath = 'models/car.glb';
+
+            showMessage("외부 3D CAD 모델 파일 검색 중...", "info", 2000);
+            
+            gltfLoader.load(glbPath, 
+                (gltf) => {
+                    handleLoadedModel(gltf.scene);
+                    showMessage("외부 GLB 차량 모델을 정상적으로 불러왔습니다!", "success", 3000);
+                },
+                undefined,
+                (err) => {
+                    // GLB 로드 실패 시 GLTF 파일 재시도
+                    gltfLoader.load(gltfPath,
+                        (gltf) => {
+                            handleLoadedModel(gltf.scene);
+                            showMessage("외부 GLTF 차량 모델을 정상적으로 불러왔습니다!", "success", 3000);
+                        },
+                        undefined,
+                        (err2) => {
+                            console.log("외부 모델 파일이 없습니다. 기본 Fallback 데모 모델을 생성합니다.");
+                            createFallbackCar();
+                            showMessage("데모 차량 모델을 불러왔습니다 (models/car.glb 경로에 파일을 추가해보세요).", "info", 4000);
+                        }
+                    );
+                }
+            );
+        }
+
+        /**
+         * [함수] handleLoadedModel(loadedScene)
+         * 불러온 외부 3D 모델의 그림자 설정, 피벗 위치 및 크기 정규화를 처리하는 함수
+         */
+        function handleLoadedModel(loadedScene) {
+            // 혹시 남아있을 수 있는 이전 3D 자식 노드 정리
+            while(carGroup.children.length > 0) {
+                carGroup.remove(carGroup.children[0]);
+            }
+            
+
+
+            // 3D 모델의 실제 바운딩 박스를 기준으로 중심 피벗 조정 및 비율 리사이징
+            const box = new THREE.Box3().setFromObject(loadedScene);
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
+
+            // 피벗을 모델의 기하학적 정중앙(Center)에 완벽히 일치시킴
+            // 이렇게 하면 어떤 복잡한 기계 부품이나 비대칭 모델도 궤도 회전 시 흔들림(Wobble) 없이 원점 제자리 회전을 합니다.
+            loadedScene.position.x = -center.x;
+            loadedScene.position.y = -center.y;
+            loadedScene.position.z = -center.z;
+
+            // 모델의 최대 크기 지름에 맞추어 적합한 비율(가로길이 약 4.5)로 스케일링
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const scaleFactor = 4.5 / maxDim;
+            loadedScene.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+            carGroup.add(loadedScene);
+            
+            // 실시간 재질 렌더링 모드 전환을 위한 원본 머티리얼 복제 백업
+            backupMaterials(carGroup);
+            
+            carGroup.scale.set(0.1, 0.1, 0.1);
+        }
+
+        /**
+         * [함수] createFallbackCar()
+         * 외부 3D 파일 로드 실패 시 표시되는 고품질 데모 컨셉트카 생성 함수
+         */
+        function createFallbackCar() {
+            const bodyMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x3b82f6, roughness: 0.25, metalness: 0.85, name: 'body'
+            });
+            const glassMaterial = new THREE.MeshStandardMaterial({
+                color: 0x0b1329, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.65, name: 'glass'
+            });
+            const wheelMaterial = new THREE.MeshStandardMaterial({
+                color: 0x111827, roughness: 0.8, metalness: 0.15, name: 'wheel'
+            });
+            const trimMaterial = new THREE.MeshStandardMaterial({
+                color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 1.2, name: 'trim'
+            });
+
+            // 조립: 메인 차체
+            const chassisGeometry = new THREE.BoxGeometry(4.2, 0.7, 2.0);
+            const chassis = new THREE.Mesh(chassisGeometry, bodyMaterial);
+            chassis.position.y = 0.4;
+            
+            // 조립: 유선형 탑승 오두막
+            const cabinGeometry = new THREE.BoxGeometry(2.4, 0.65, 1.7);
+            const cabin = new THREE.Mesh(cabinGeometry, glassMaterial);
+            cabin.position.set(-0.2, 1.0, 0);
+            
+            // 조립: 후방 발광 스포일러
+            const spoilerGeometry = new THREE.BoxGeometry(0.3, 0.1, 1.8);
+            const spoiler = new THREE.Mesh(spoilerGeometry, trimMaterial);
+            spoiler.position.set(-2.0, 0.8, 0);
+
+            // 조립: 전면 미래형 네온 헤드라이트
+            const lightGeo = new THREE.BoxGeometry(0.1, 0.15, 1.8);
+            const headlight = new THREE.Mesh(lightGeo, trimMaterial);
+            headlight.position.set(2.1, 0.4, 0);
+
+            carGroup.add(chassis);
+            carGroup.add(cabin);
+            carGroup.add(spoiler);
+            carGroup.add(headlight);
+
+            // 조립: 멋진 바퀴 디자인
+            const wheelGeometry = new THREE.CylinderGeometry(0.45, 0.45, 0.35, 32);
+            wheelGeometry.rotateX(Math.PI / 2);
+            
+            const createWheel = (x, z) => {
+                const w = new THREE.Mesh(wheelGeometry, wheelMaterial);
+                w.position.set(x, 0.45, z);
+                
+                const capGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.37, 16);
+                capGeo.rotateX(Math.PI / 2);
+                const cap = new THREE.Mesh(capGeo, trimMaterial);
+                cap.position.copy(w.position);
+                
+                carGroup.add(w);
+                carGroup.add(cap);
+            };
+
+            createWheel(1.3, 1);
+            createWheel(1.3, -1);
+            createWheel(-1.3, 1);
+            createWheel(-1.3, -1);
+
+            // CAD 프레임 와이어 엣지 오버레이
+            const edges = new THREE.EdgesGeometry(chassisGeometry);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x60a5fa, opacity: 0.25, transparent: true }));
+            line.position.copy(chassis.position);
+            carGroup.add(line);
+
+            // 머티리얼 원본 복제 백업
+            backupMaterials(carGroup);
+
+            carGroup.scale.set(0.1, 0.1, 0.1);
+        }
+
+        /**
+         * [함수] backupMaterials(group)
+         * 3D 메쉬들의 원래 색상/질감 및 위치를 백업하여 복구할 수 있게 기록해 두는 함수
+         */
+        function backupMaterials(group) {
+            originalMaterials.clear();
+            group.traverse((child) => {
+                if (child.isMesh) {
+                    // 각 부품의 원래 로컬 위치 저장 (폭파 애니메이션용)
+                    if (!child.userData.originalPosition) {
+                        child.userData.originalPosition = child.position.clone();
+                    }
+                    
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            originalMaterials.set(child.uuid, child.material.map(m => m.clone()));
+                        } else {
+                            originalMaterials.set(child.uuid, child.material.clone());
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * [함수] onWindowResize()
+         * 브라우저 크기 변경 대응 함수
+         */
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        /**
+         * [함수] animate3D()
+         * 부드러운 회전(Rotate), 확대(Zoom), 평행이동(Pan) 보간 연산을 반영하는 메인 프레임 루프
+         */
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            // Lerp 연산으로 움직임을 고급스럽고 묵직하게 보정
+            currentRotationX += (targetRotationX - currentRotationX) * easing;
+            currentRotationY += (targetRotationY - currentRotationY) * easing;
+            currentScale += (targetScale - currentScale) * easing;
+            
+            currentPanX += (targetPanX - currentPanX) * easing;
+            currentPanY += (targetPanY - currentPanY) * easing;
+
+            // 폭파(Explode) 애니메이션 목표값 보간
+            const targetExplode = isExploded ? 1.0 : 0.0;
+            explodeProgress += (targetExplode - explodeProgress) * easing;
+
+            // 각 부품 메쉬의 로컬 위치 오프셋 연산
+            carGroup.traverse((child) => {
+                if (child.isMesh && child.userData.originalPosition) {
+                    const origPos = child.userData.originalPosition;
+                    // 중심축(0, 0, 0) 기준 외각 방향 벡터
+                    const dir = origPos.clone().normalize();
+                    // 수평 분해감 강조를 위해 Y축 높이 변화는 살짝만 제한
+                    dir.y = dir.y * 0.3; 
+                    
+                    // 폭파 강도(최대 약 1.8m 벌어짐)를 반영해 좌표 실시간 대입
+                    child.position.copy(origPos).addScaledVector(dir, explodeProgress * 1.8);
+                }
+            });
+
+            // 보간된 상태 수치 적용
+            carGroup.rotation.x = currentRotationX;
+            carGroup.rotation.y = currentRotationY;
+            carGroup.scale.set(currentScale, currentScale, currentScale);
+            
+            // 모델 평행이동 적용
+            carGroup.position.set(currentPanX, currentPanY, 0);
+
+            // UI 텍스트 수치 표시 업데이트
+            document.getElementById('rot-y').innerText = (carGroup.rotation.y * (180/Math.PI)).toFixed(1) + '°';
+            document.getElementById('scale-val').innerText = (currentScale * 100).toFixed(0) + '%';
+
+            renderer.render(scene, camera);
+        }
+
+        /**
+         * ==========================================
+         * 2. MediaPipe Hands & 제스처 처리 로직 (다중 제스처 & 동적 감도)
+         * ==========================================
+         */
+        
+        const videoElement = document.getElementById('webcam-video');
+        const canvasElement = document.getElementById('webcam-canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const webcamContainer = document.getElementById('webcam-container');
+        
+        // 제스처 상태 추적 변수
+        let isRightPinching = false; // 오른손 핀치: 회전 제어
+        let startRightPinchPos = { x: 0, y: 0 };
+        let baseRotation = { x: 0, y: 0 };
+        
+        let isLeftPinching = false; // 왼손 핀치: 평행이동(Pan) 제어
+        let startLeftPinchPos = { x: 0, y: 0 };
+        let basePan = { x: 0, y: 0 };
+        
+        let isTwoHandPinching = false; // 양손 핀치: 줌(Zoom) 제어
+        let initialTwoHandDistance = 0;
+        let initialScale = 1;
+        
+        // 손 동작 민감도 계수
+        const ROTATION_SENSITIVITY = 4.0;
+        const PAN_SENSITIVITY = 3.5;
+
+        /**
+         * [함수] enableMouseControl()
+         * 웹캠 미인식 또는 부재 시 드래그(회전), 우클릭/Shift+드래그(이동), 휠(줌) 마우스 기능 제공
+         */
+        let isMouseControlEnabled = false;
+        function enableMouseControl() {
+            if (isMouseControlEnabled) return;
+            isMouseControlEnabled = true;
+
+            const container = document.getElementById('canvas-container');
+            let isDragging = false;
+            let isPanning = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            let zoomTimeout;
+
+            // 마우스 우클릭 CAD 컨텍스트 메뉴 차단
+            document.addEventListener('contextmenu', (e) => {
+                if (e.target.closest('#left-panel') || 
+                    e.target.closest('#right-panel') || 
+                    e.target.closest('#webcam-container') || 
+                    e.target.closest('#message-box') || 
+                    e.target.closest('button') || 
+                    e.target.closest('select') || 
+                    e.target.closest('input')) {
+                    return;
+                }
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousedown', (e) => {
+                if (isLocked) return;
+                
+                // UI 패널, 버튼, 셀렉트 박스 등 조작계 UI 클릭 시 드래그 동작 무시 (캔버스 빈 영역 드래그 허용)
+                if (e.target.closest('#left-panel') || 
+                    e.target.closest('#right-panel') || 
+                    e.target.closest('#webcam-container') || 
+                    e.target.closest('#message-box') || 
+                    e.target.closest('button') || 
+                    e.target.closest('select') || 
+                    e.target.closest('input')) {
+                    return;
+                }
+                
+                isDragging = true;
+                document.body.style.userSelect = 'none'; // 드래그 중 UI 텍스트 선택 방지
+                
+                // 우클릭(button 2)이거나 Shift키를 누른 채 클릭 시 Pan 모드 발동
+                if (e.button === 2 || e.shiftKey) {
+                    isPanning = true;
+                    document.getElementById('pinch-status').innerText = "PAN (Mouse)";
+                    document.getElementById('pinch-status').className = "text-amber-400 font-mono font-bold";
+                    container.style.cursor = 'move';
+                } else {
+                    isPanning = false;
+                    document.getElementById('pinch-status').innerText = "ROTATE (Mouse)";
+                    document.getElementById('pinch-status').className = "text-emerald-400 font-mono font-bold";
+                    container.style.cursor = 'grabbing';
+                }
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isLocked) return;
+                if (isDragging) {
+                    // 화면 전체 기준인 clientX, clientY를 사용해 타겟 전환 시 좌표가 튀는 현상 원천 방지
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+
+                    if (isPanning) {
+                        // 평행이동
+                        targetPanX += deltaX * 0.015;
+                        targetPanY -= deltaY * 0.015;
+                    } else {
+                        // 회전
+                        targetRotationY += deltaX * 0.01;
+                        targetRotationX += deltaY * 0.01;
+                    }
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    isPanning = false;
+                    document.getElementById('pinch-status').innerText = "Click to Grip";
+                    document.getElementById('pinch-status').className = "text-slate-500 font-mono";
+                    container.style.cursor = 'grab';
+                    document.body.style.userSelect = ''; // 드래그 종료 시 텍스트 선택 활성화 복구
+                }
+            });
+
+            document.addEventListener('wheel', (e) => {
+                if (isLocked) return;
+                
+                // UI 패널 및 조작계 영역 위에서의 마우스 휠 줌 동작만 무시
+                if (e.target.closest('#left-panel') || 
+                    e.target.closest('#right-panel') || 
+                    e.target.closest('#webcam-container') || 
+                    e.target.closest('#message-box') || 
+                    e.target.closest('button') || 
+                    e.target.closest('select') || 
+                    e.target.closest('input')) {
+                    return;
+                }
+                
+                e.preventDefault();
+                targetScale += e.deltaY * -0.001;
+                targetScale = Math.max(0.3, Math.min(targetScale, 3.5)); // 30% ~ 350% 제한
+                
+                document.getElementById('pinch-status').innerText = "ZOOMING";
+                document.getElementById('pinch-status').className = "text-purple-400 font-mono font-bold";
+                
+                clearTimeout(zoomTimeout);
+                zoomTimeout = setTimeout(() => {
+                    document.getElementById('pinch-status').innerText = "Click to Grip";
+                    document.getElementById('pinch-status').className = "text-slate-500 font-mono";
+                }, 300);
+            }, { passive: false });
+            
+
+            // ==========================================
+            // 모바일 터치 제스처 조작 (1손가락 회전, 2손가락 핀치 줌 & 팬)
+            // ==========================================
+            let touchMode = null; // 'rotate' | 'pinch_pan'
+            let previousTouchPosition = { x: 0, y: 0 };
+            let previousTouchDistance = 0;
+            let previousTouchMidpoint = { x: 0, y: 0 };
+
+            function isTouchOnUI(target) {
+                return target.closest('#left-panel') || 
+                       target.closest('#right-panel') || 
+                       target.closest('#webcam-container') || 
+                       target.closest('#message-box') || 
+                       target.closest('.floating-trigger-btn') || 
+                       target.closest('button') || 
+                       target.closest('select') || 
+                       target.closest('input') || 
+                       target.closest('label');
+            }
+
+            document.addEventListener('touchstart', (e) => {
+                if (isLocked) return;
+                if (isTouchOnUI(e.target)) return;
+
+                if (e.touches.length === 1) {
+                    touchMode = 'rotate';
+                    previousTouchPosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                    const statusEl = document.getElementById('pinch-status');
+                    if (statusEl) {
+                        statusEl.innerText = "ROTATE (Touch)";
+                        statusEl.className = "text-emerald-400 font-mono font-bold";
+                    }
+                } else if (e.touches.length === 2) {
+                    touchMode = 'pinch_pan';
+                    const t1 = e.touches[0];
+                    const t2 = e.touches[1];
+                    previousTouchDistance = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+                    previousTouchMidpoint = {
+                        x: (t1.clientX + t2.clientX) / 2,
+                        y: (t1.clientY + t2.clientY) / 2
+                    };
+                    const statusEl = document.getElementById('pinch-status');
+                    if (statusEl) {
+                        statusEl.innerText = "ZOOM / PAN (Touch)";
+                        statusEl.className = "text-purple-400 font-mono font-bold";
+                    }
+                }
+            }, { passive: false });
+
+            document.addEventListener('touchmove', (e) => {
+                if (isLocked || !touchMode) return;
+                if (isTouchOnUI(e.target)) return;
+
+                if (e.cancelable) e.preventDefault(); // 웹뷰 기본 스크롤 및 바운스 차단
+
+                if (touchMode === 'rotate' && e.touches.length === 1) {
+                    const currentX = e.touches[0].clientX;
+                    const currentY = e.touches[0].clientY;
+                    const deltaX = currentX - previousTouchPosition.x;
+                    const deltaY = currentY - previousTouchPosition.y;
+
+                    targetRotationY += deltaX * 0.008;
+                    targetRotationX += deltaY * 0.008;
+
+                    previousTouchPosition = { x: currentX, y: currentY };
+                } else if (touchMode === 'pinch_pan' && e.touches.length >= 2) {
+                    const t1 = e.touches[0];
+                    const t2 = e.touches[1];
+
+                    // 1. 2손가락 핀치 줌 (Zoom)
+                    const currentDistance = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+                    if (previousTouchDistance > 0) {
+                        const distDelta = currentDistance - previousTouchDistance;
+                        targetScale += distDelta * 0.005;
+                        targetScale = Math.max(0.3, Math.min(targetScale, 3.5)); // 30% ~ 350%
+                    }
+                    previousTouchDistance = currentDistance;
+
+                    // 2. 2손가락 평행 이동 (Pan)
+                    const currentMidpoint = {
+                        x: (t1.clientX + t2.clientX) / 2,
+                        y: (t1.clientY + t2.clientY) / 2
+                    };
+                    const deltaMidX = currentMidpoint.x - previousTouchMidpoint.x;
+                    const deltaMidY = currentMidpoint.y - previousTouchMidpoint.y;
+
+                    targetPanX += deltaMidX * 0.01;
+                    targetPanY -= deltaMidY * 0.01;
+
+                    previousTouchMidpoint = currentMidpoint;
+                }
+            }, { passive: false });
+
+            document.addEventListener('touchend', (e) => {
+                if (e.touches.length === 0) {
+                    touchMode = null;
+                    const statusEl = document.getElementById('pinch-status');
+                    if (statusEl) {
+                        statusEl.innerText = "OFF";
+                        statusEl.className = "text-slate-500 font-mono";
+                    }
+                } else if (e.touches.length === 1) {
+                    touchMode = 'rotate';
+                    previousTouchPosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                    const statusEl = document.getElementById('pinch-status');
+                    if (statusEl) {
+                        statusEl.innerText = "ROTATE (Touch)";
+                        statusEl.className = "text-emerald-400 font-mono font-bold";
+                    }
+                }
+            });
+
+            container.style.cursor = 'grab';
+        }
+
+        /**
+         * [함수] showMessage(메시지내용, 타입, 지속시간)
+         * 화면 중앙에 알림 팝업 토스트 창을 띄움
+         */
+                /**
+         * [함수] triggerHaptic(pattern)
+         * 안드로이드 네이티브 진동(AndroidApp.vibrate) 우선 호출 및 웹 진동 폴백
+         */
+        function triggerHaptic(pattern) {
+            try {
+                if (window.AndroidApp && typeof window.AndroidApp.vibrate === 'function') {
+                    if (Array.isArray(pattern)) {
+                        window.AndroidApp.vibrate(JSON.stringify(pattern));
+                    } else {
+                        window.AndroidApp.vibrate(Number(pattern) || 50);
+                    }
+                    return;
+                }
+                if (navigator.vibrate) {
+                    navigator.vibrate(pattern);
+                }
+            } catch (e) {}
+        }
+
+        function showMessage(msg, type='info', duration=3000) {
+            const msgBox = document.getElementById('message-box');
+            const msgText = document.getElementById('message-text');
+            const icon = msgBox.querySelector('i');
+            
+            msgText.innerText = msg;
+            
+            if(type === 'error') {
+                icon.className = 'fa-solid fa-triangle-exclamation text-red-500';
+            } else if (type === 'success') {
+                icon.className = 'fa-solid fa-circle-check text-emerald-500';
+            } else {
+                icon.className = 'fa-solid fa-circle-info text-blue-400';
+            }
+
+            msgBox.classList.remove('opacity-0');
+            
+            if(duration > 0) {
+                setTimeout(() => {
+                    msgBox.classList.add('opacity-0');
+                }, duration);
+            }
+        }
+
+        /**
+         * [함수] calculateDistance(점1, 점2)
+         * 두 점 간의 유클리디안 거리를 계산하는 수학 함수
+         */
+        function calculateDistance(p1, p2) {
+            return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2) + Math.pow(p1.z - p2.z, 2));
+        }
+
+        /**
+         * [함수] countExtendedFingers(landmarks)
+         * 엄지를 제외한 네 손가락(검지, 중지, 약지, 새끼)의 펴짐 유무를 합산하여 0~4개 값을 반환합니다.
+         */
+        function countExtendedFingers(landmarks) {
+            if (!landmarks) return 0;
+            
+            // Y좌표는 위로 갈수록 작아지므로 Tip.y < PIP Joint.y 이면 펴진 것
+            const isIndexExtended = landmarks[8].y < landmarks[6].y;
+            const isMiddleExtended = landmarks[12].y < landmarks[10].y;
+            const isRingExtended = landmarks[16].y < landmarks[14].y;
+            const isPinkyExtended = landmarks[20].y < landmarks[18].y;
+            
+            let count = 0;
+            if (isIndexExtended) count++;
+            if (isMiddleExtended) count++;
+            if (isRingExtended) count++;
+            if (isPinkyExtended) count++;
+            
+            return count;
+        }
+
+        /**
+         * [함수] updateGestureMap(fingerCount, action)
+         * 손가락 제스처 맵을 업데이트하는 함수
+         */
+        function updateGestureMap(fingerCount, action) {
+            gestureMapping[fingerCount] = action;
+        }
+
+        /**
+         * [함수] onResults(results)
+         * MediaPipe 가 획득한 손 뼈대 데이터를 실시간 연산하여 기능 제어로 매핑하는 핵심 루프 콜백
+         */
+        function onResults(results) {
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            
+            let rightHandPinching = false;
+            let leftHandPinching = false;
+            let rightHandMid = null;
+            let leftHandMid = null;
+
+            // --- 다수 인원 감지 시 1인 사용자 손만 필터링하는 파이프라인 ---
+            let activeHandLandmarks = [];
+            let activeHandedness = [];
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const handsWithScale = [];
+                for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+                    const landmarks = results.multiHandLandmarks[i];
+                    const scale = calculateDistance(landmarks[0], landmarks[9]);
+                    handsWithScale.push({ 
+                        landmarks, 
+                        handednessObj: results.multiHandedness[i], 
+                        scale 
+                    });
+                }
+
+                // 스케일 기준 내림차순 정렬 (가장 카메라에 가까운 손이 0번째)
+                handsWithScale.sort((a, b) => b.scale - a.scale);
+
+                // 주 조작자(가장 큰 손을 가진 사람)의 손만 추출
+                const primaryHand = handsWithScale[0];
+                activeHandLandmarks.push(primaryHand.landmarks);
+                activeHandedness.push(primaryHand.handednessObj);
+
+                // 두 번째 손 검증 (양손 조작 대응)
+                if (handsWithScale.length > 1) {
+                    const secondaryHand = handsWithScale[1];
+                    
+                    // 왼손/오른손 방향이 다르고, 크기 차이가 주 조작자 손의 25% 이내일 때만 동일 인물 손으로 인정
+                    const isDifferentSide = secondaryHand.handednessObj.label !== primaryHand.handednessObj.label;
+                    const isSimilarDepth = Math.abs(secondaryHand.scale - primaryHand.scale) / primaryHand.scale <= 0.25;
+
+                    if (isDifferentSide && isSimilarDepth) {
+                        activeHandLandmarks.push(secondaryHand.landmarks);
+                        activeHandedness.push(secondaryHand.handednessObj);
+                    }
+                }
+            }
+
+            // 기존 multiHandLandmarks 레퍼런스를 필터링된 배열로 교체
+            results.multiHandLandmarks = activeHandLandmarks;
+            results.multiHandedness = activeHandedness;
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                document.getElementById('track-status').innerText = "Active (" + results.multiHandLandmarks.length + ")";
+                document.getElementById('track-status').className = "text-emerald-400 font-mono";
+                document.getElementById('status-icon').className = "fa-solid fa-satellite-dish text-emerald-400 animate-pulse";
+
+                for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+                    const landmarks = results.multiHandLandmarks[i];
+                    const handedness = results.multiHandedness[i].label; // 'Left' 또는 'Right'
+                    
+                    // 왼손은 주황색, 오른손은 파란색으로 뼈대 드로잉
+                    const drawColor = handedness === 'Left' ? '#f59e0b' : '#3b82f6';
+                    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: drawColor, lineWidth: 2});
+                    drawLandmarks(canvasCtx, landmarks, {color: '#94a3b8', lineWidth: 1, radius: 2});
+                    
+                    const thumbTip = landmarks[4];
+                    const indexTip = landmarks[8];
+                    
+                    // 2번 기능: Z축 거리를 보정하기 위한 동적 감도(Dynamic Threshold) 연산
+                    // 손목(0)과 중지 손가락 밑 관절(9) 사이 거리를 기준 척도로 사용
+                    const handScaleSize = calculateDistance(landmarks[0], landmarks[9]);
+                    const dynamicThreshold = handScaleSize * 0.38; // 손 크기에 비례하는 동적 임계치 산출
+                    
+                    const distance = calculateDistance(thumbTip, indexTip);
+                    const isPinchActive = distance < dynamicThreshold;
+                    const midPoint = { x: (thumbTip.x + indexTip.x) / 2, y: (thumbTip.y + indexTip.y) / 2 };
+
+                    // 핀치 활성화 여부에 따라 피드백 노드 그리기
+                    canvasCtx.fillStyle = isPinchActive ? '#10b981' : '#ef4444';
+                    canvasCtx.beginPath(); canvasCtx.arc(thumbTip.x * canvasElement.width, thumbTip.y * canvasElement.height, 6, 0, 2 * Math.PI); canvasCtx.fill();
+                    canvasCtx.beginPath(); canvasCtx.arc(indexTip.x * canvasElement.width, indexTip.y * canvasElement.height, 6, 0, 2 * Math.PI); canvasCtx.fill();
+                    
+                    canvasCtx.beginPath();
+                    canvasCtx.moveTo(thumbTip.x * canvasElement.width, thumbTip.y * canvasElement.height);
+                    canvasCtx.lineTo(indexTip.x * canvasElement.width, indexTip.y * canvasElement.height);
+                    canvasCtx.lineWidth = 3;
+                    canvasCtx.strokeStyle = isPinchActive ? '#10b981' : '#ef4444';
+                    canvasCtx.stroke();
+
+                    // 웹캠 레이블에 따른 핀치 상태 할당
+                    if (handedness === 'Right') {
+                        rightHandPinching = isPinchActive;
+                        rightHandMid = midPoint;
+                    } else {
+                        leftHandPinching = isPinchActive;
+                        leftHandMid = midPoint;
+                    }
+                }
+
+                // --- 2번 기능: 제스처 조작 체계 연동 ---
+            
+            // 잠금 상태인 경우 제스처 조작 무효화 (상태 표시는 LOCKED로 유지)
+            if (isLocked) {
+                isRightPinching = false;
+                isTwoHandPinching = false;
+                document.getElementById('pinch-status').innerText = "LOCKED";
+                document.getElementById('pinch-status').className = "text-red-400 font-mono font-bold";
+                webcamContainer.className = "pinch-inactive";
+            }
+            // 케이스 A: 양손 모드 (줌-아웃/줌-인)
+            else if (results.multiHandLandmarks.length === 2 && rightHandPinching && leftHandPinching) {
+                    isRightPinching = false;
+                    
+                    const currentDistance = Math.sqrt(Math.pow(rightHandMid.x - leftHandMid.x, 2) + Math.pow(rightHandMid.y - leftHandMid.y, 2));
+
+                    // 양손 핀치 간 연결 보라색 시각 가이드라인 드로잉
+                    canvasCtx.beginPath();
+                    canvasCtx.moveTo(rightHandMid.x * canvasElement.width, rightHandMid.y * canvasElement.height);
+                    canvasCtx.lineTo(leftHandMid.x * canvasElement.width, leftHandMid.y * canvasElement.height);
+                    canvasCtx.lineWidth = 2.5;
+                    canvasCtx.setLineDash([6, 6]);
+                    canvasCtx.strokeStyle = '#a855f7';
+                    canvasCtx.stroke();
+                    canvasCtx.setLineDash([]);
+
+                    if (!isTwoHandPinching) {
+                        isTwoHandPinching = true;
+                        initialTwoHandDistance = currentDistance;
+                        initialScale = targetScale;
+                        
+                        document.getElementById('pinch-status').innerText = "ZOOM (2-Hand)";
+                        document.getElementById('pinch-status').className = "text-purple-400 font-mono font-bold animate-pulse";
+                        webcamContainer.className = "pinch-inactive pinch-active-zoom";
+                    } else {
+                        const scaleFactor = currentDistance / initialTwoHandDistance;
+                        targetScale = initialScale * scaleFactor;
+                        targetScale = Math.max(0.3, Math.min(targetScale, 3.5)); // 배율 한계
+                    }
+                } 
+                // 케이스 B: 단일 손 모드 (오른손 또는 왼손 구분 없이 핀치 시 회전)
+                else {
+                    isTwoHandPinching = false;
+
+                    const activePinch = rightHandPinching || leftHandPinching;
+                    const activeMid = rightHandPinching ? rightHandMid : leftHandMid;
+
+                    if (activePinch) {
+                        if (!isRightPinching) {
+                            isRightPinching = true;
+                            startRightPinchPos = { x: activeMid.x, y: activeMid.y };
+                            baseRotation = { x: targetRotationX, y: targetRotationY };
+                            
+                            document.getElementById('pinch-status').innerText = "ROTATE (1-Hand)";
+                            document.getElementById('pinch-status').className = "text-emerald-400 font-mono font-bold";
+                            webcamContainer.className = "pinch-inactive pinch-active-rotate";
+                            
+                            triggerHaptic(30);
+                        } else {
+                            const deltaX = startRightPinchPos.x - activeMid.x; 
+                            const deltaY = activeMid.y - startRightPinchPos.y; 
+                            targetRotationY = baseRotation.y + (deltaX * ROTATION_SENSITIVITY);
+                            targetRotationX = baseRotation.x + (deltaY * ROTATION_SENSITIVITY);
+                        }
+                    } else {
+                        if (isRightPinching) {
+                            isRightPinching = false;
+                            resetPinchUI();
+                        }
+                    }
+                }
+
+                // --- 3번 기능: 3초 Hold 제스처 및 HUD 게이지 연동 ---
+                // 어떠한 핀치 상태도 아닐 때만 손가락 개수 및 Hold 제스처 판별
+                const anyPinching = rightHandPinching || leftHandPinching || isTwoHandPinching || isRightPinching;
+                
+                if (!anyPinching && results.multiHandLandmarks.length > 0) {
+                    const landmarks = results.multiHandLandmarks[0];
+                    const extendedCount = countExtendedFingers(landmarks);
+                    
+                    if (extendedCount >= 1 && extendedCount <= 4) {
+                        if (activeGesture !== extendedCount) {
+                            activeGesture = extendedCount;
+                            gestureStartTime = Date.now();
+                            gestureTriggered = false;
+                        } else if (!gestureTriggered) {
+                            const elapsed = Date.now() - gestureStartTime;
+                            const progress = Math.min(1.0, elapsed / 3000);
+                            
+                            // 캔버스 HUD 게이지 드로잉
+                            const wrist = landmarks[0];
+                            const hx = wrist.x * canvasElement.width;
+                            const hy = (wrist.y + 0.08) * canvasElement.height;
+                            
+                            // 배경 서클
+                            canvasCtx.beginPath();
+                            canvasCtx.arc(hx, hy, 16, 0, 2 * Math.PI);
+                            canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                            canvasCtx.lineWidth = 4;
+                            canvasCtx.stroke();
+                            
+                            // 진행 서클
+                            canvasCtx.beginPath();
+                            canvasCtx.arc(hx, hy, 16, -Math.PI / 2, -Math.PI / 2 + (2 * Math.PI * progress));
+                            canvasCtx.strokeStyle = '#60a5fa';
+                            canvasCtx.lineWidth = 4;
+                            canvasCtx.stroke();
+                            
+                            // 글자 안내
+                            canvasCtx.fillStyle = '#ffffff';
+                            canvasCtx.font = 'bold 11px Inter, sans-serif';
+                            canvasCtx.textAlign = 'center';
+                            
+                            let actionText = "";
+                            if (activeGesture === 1) actionText = "Reset View";
+                            else if (activeGesture === 2) actionText = "Explode / Assembly";
+                            else if (activeGesture === 3) actionText = "Section Cut";
+                            else if (activeGesture === 4) actionText = "X-Ray Mode";
+                            
+                            canvasCtx.fillText(`${activeGesture} FINGERS (${Math.ceil((3000 - elapsed)/1000)}s)`, hx, hy - 25);
+                            canvasCtx.fillStyle = '#60a5fa';
+                            canvasCtx.fillText(actionText, hx, hy - 38);
+                            
+                            // 3초 시간 달성 시 기능 실행
+                            if (elapsed >= 3000) {
+                                triggerGestureAction(activeGesture);
+                                gestureTriggered = true;
+                            }
+                        }
+                    } else {
+                        activeGesture = -1;
+                        gestureTriggered = false;
+                    }
+                } else {
+                    activeGesture = -1;
+                    gestureTriggered = false;
+                }
+            } 
+            // 감지된 손 없음
+            else {
+                document.getElementById('track-status').innerText = "No Hand";
+                document.getElementById('track-status').className = "text-slate-500 font-mono";
+                document.getElementById('status-icon').className = "fa-solid fa-eye-slash text-slate-500";
+                
+                isRightPinching = false;
+                isLeftPinching = false;
+                isTwoHandPinching = false;
+                resetPinchUI();
+
+                activeGesture = -1;
+                gestureTriggered = false;
+            }
+
+            // --- 4번 기능: 가상 AR "고정(Lock)" 버튼 렌더링 및 공간 터치 판정 ---
+            const btnX = canvasElement.width / 2;
+            const btnY = canvasElement.height - 50; // 하단에서 50px 위
+            const btnRadius = 22; // 반지름 22px
+            
+            let isHovering = false;
+            
+            // 감지된 손이 하나 이상 있을 경우 검지 손가락 끝(8)과 가상 버튼 간의 충돌 검사
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                const indexTip = landmarks[8];
+                const fingerX = indexTip.x * canvasElement.width;
+                const fingerY = indexTip.y * canvasElement.height;
+                
+                const dist = Math.sqrt(Math.pow(fingerX - btnX, 2) + Math.pow(fingerY - btnY, 2));
+                if (dist <= btnRadius) {
+                    isHovering = true;
+                }
+            }
+            
+            // 호버 상태 변수 및 타이머 처리
+            if (isHovering) {
+                if (!isFingerOverButton) {
+                    isFingerOverButton = true;
+                    buttonHoverStartTime = Date.now();
+                    buttonActionTriggered = false;
+                    triggerHaptic(20);
+                } else if (!buttonActionTriggered) {
+                    const elapsed = Date.now() - buttonHoverStartTime;
+                    const progress = Math.min(1.0, elapsed / 3000);
+                    
+                    // 3초 게이지 테두리 그리기
+                    canvasCtx.beginPath();
+                    canvasCtx.arc(btnX, btnY, btnRadius + 4, -Math.PI / 2, -Math.PI / 2 + (2 * Math.PI * progress));
+                    canvasCtx.strokeStyle = "#f59e0b"; // 호버 로딩 노란색
+                    canvasCtx.lineWidth = 3;
+                    canvasCtx.stroke();
+                    
+                    if (elapsed >= 3000) {
+                        isLocked = !isLocked;
+                        buttonActionTriggered = true;
+                        
+                        triggerHaptic([100, 50, 100]);
+                        
+                        // 우측 패널 UI 강제 갱신
+                        if (isLocked) {
+                            document.getElementById('pinch-status').innerText = "LOCKED";
+                            document.getElementById('pinch-status').className = "text-red-400 font-mono font-bold";
+                            webcamContainer.className = "pinch-inactive";
+                            showMessage("화면 조작이 고정(LOCK)되었습니다.", "success", 2500);
+                        } else {
+                            document.getElementById('pinch-status').innerText = "OFF";
+                            document.getElementById('pinch-status').className = "text-slate-500 font-mono";
+                            showMessage("화면 조작 고정이 해제되었습니다.", "success", 2500);
+                        }
+                    }
+                }
+            } else {
+                isFingerOverButton = false;
+                buttonActionTriggered = false;
+            }
+            
+            // 가상 AR 버튼 실시간 그래픽 렌더링
+            // 1. 버튼 배경 원 그리기
+            canvasCtx.beginPath();
+            canvasCtx.arc(btnX, btnY, btnRadius, 0, 2 * Math.PI);
+            canvasCtx.fillStyle = isFingerOverButton ? "rgba(255, 255, 255, 0.3)" : "rgba(15, 23, 42, 0.7)";
+            canvasCtx.fill();
+            canvasCtx.strokeStyle = isLocked ? "#ef4444" : "rgba(255, 255, 255, 0.4)";
+            canvasCtx.lineWidth = 2.5;
+            canvasCtx.stroke();
+            
+            // 2. 폰트어썸 자물쇠 유니코드 아이콘 그리기 (Font Awesome 아이콘 유도)
+            canvasCtx.font = "solid 14px 'Font Awesome 6 Free'";
+            canvasCtx.fillStyle = isLocked ? "#ef4444" : "#ffffff";
+            canvasCtx.textAlign = "center";
+            canvasCtx.textBaseline = "middle";
+            canvasCtx.fillText(isLocked ? "\uf023" : "\uf09c", btnX, btnY);
+            
+            // 3. 상태 텍스트 캡션 그리기
+            canvasCtx.font = "bold 9px Inter, sans-serif";
+            canvasCtx.fillStyle = isLocked ? "#ef4444" : "#94a3b8";
+            canvasCtx.fillText(isLocked ? "LOCKED" : "FREE", btnX, btnY - btnRadius - 6);
+
+            canvasCtx.restore();
+        }
+
+        /**
+         * [함수] resetPinchUI()
+         * 핀치 해제 시 UI 및 경계선 디자인 초기화 함수
+         */
+        function resetPinchUI() {
+            if (!isRightPinching && !isLeftPinching && !isTwoHandPinching) {
+                document.getElementById('pinch-status').innerText = "OFF";
+                document.getElementById('pinch-status').className = "text-slate-500 font-mono";
+                webcamContainer.className = "pinch-inactive";
+            }
+        }
+
+        /**
+         * ==========================================
+         * 3. CAD UI 컨트롤 인터랙션 구현 함수군
+         * ==========================================
+         */
+
+        /**
+         * [함수] setViewPreset(preset)
+         * 카메라 뷰 퀵 프리셋 변경 (Front, Side, Top, Iso)
+         */
+        function setViewPreset(preset) {
+            // 버튼 액티브 클래스 제어
+            document.querySelectorAll('[id^="btn-view-"]').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`btn-view-${preset}`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            // 축 원복 및 초기화
+            targetPanX = 0;
+            targetPanY = 0;
+
+            if (preset === 'front') {
+                targetRotationX = 0;
+                targetRotationY = 0;
+            } else if (preset === 'side') {
+                targetRotationX = 0;
+                targetRotationY = Math.PI / 2;
+            } else if (preset === 'top') {
+                targetRotationX = Math.PI / 2;
+                targetRotationY = 0;
+            } else if (preset === 'iso') {
+                targetRotationX = 0.4;
+                targetRotationY = 0.78;
+            }
+            
+            showMessage(`카메라 정렬: ${preset.toUpperCase()} 뷰`, "success", 1500);
+        }
+
+        /**
+         * [함수] setRenderMode(mode)
+         * 모델의 표면 렌더링 재질 모드 변경 (Solid, Wireframe, X-Ray, Hologram)
+         */
+        function setRenderMode(mode) {
+            currentRenderMode = mode;
+            document.querySelectorAll('[id^="btn-render-"]').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`btn-render-${mode}`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            if (!carGroup) return;
+
+            carGroup.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    const origMat = originalMaterials.get(child.uuid);
+                    if (!origMat) return;
+
+                    // 재질이 배열 형식으로 선언되어 있는 경우와 개별인 경우 각각 분기 처리
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach((matElement, index) => {
+                            applyMaterialSettings(matElement, origMat[index], mode);
+                        });
+                    } else {
+                        applyMaterialSettings(child.material, origMat, mode);
+                    }
+                }
+            });
+            showMessage(`렌더링 스타일: ${mode.toUpperCase()}`, "success", 1500);
+        }
+
+        /**
+         * [함수] applyMaterialSettings(material, originalBackup, mode)
+         * 단일 3D 재질 개체에 대하여 모드별 시각 특성 적용
+         */
+        function applyMaterialSettings(material, originalBackup, mode) {
+            // 우선 백업 데이터로 기본 원복
+            material.copy(originalBackup);
+
+            // 단면 절단 활성화 여부에 따른 clippingPlanes 속성 바인딩
+            if (isClippingActive) {
+                material.clippingPlanes = [localPlane];
+            } else {
+                material.clippingPlanes = null;
+            }
+
+            if (mode === 'solid') {
+                // 원형 유지
+            } else if (mode === 'wireframe') {
+                material.wireframe = true;
+            } else if (mode === 'xray') {
+                material.transparent = true;
+                material.opacity = 0.25;
+                material.wireframe = false;
+            } else if (mode === 'hologram') {
+                material.transparent = true;
+                material.opacity = 0.5;
+                material.wireframe = true;
+                if (material.emissive) {
+                    material.emissive.setHex(0x10b981);
+                    material.emissiveIntensity = 1.5;
+                }
+            }
+        }
+
+        /**
+         * [함수] toggleClipping()
+         * 실시간 3D 단면 절단 뷰 상태 토글 함수
+         */
+        function toggleClipping() {
+            isClippingActive = !isClippingActive;
+            
+            // 기존 렌더 텍스처 스타일을 재컴파일하여 바뀐 클리핑 평면 속성을 일괄 대입
+            setRenderMode(currentRenderMode);
+            
+            showMessage(isClippingActive ? "실시간 단면(Section) 보기 활성화" : "실시간 단면 보기 해제", "success", 2500);
+        }
+
+        /**
+         * [함수] triggerGestureAction(gestureCode)
+         * 3초간 유지된 손가락 제스처(1~4)에 매핑된 3D CAD 특수 연산을 실행합니다.
+         */
+        function triggerGestureAction(gestureCode) {
+            // 햅틱 진동 피드백 (지원 브라우저 대응)
+            triggerHaptic([100, 50, 100]);
+            
+            const action = gestureMapping[gestureCode];
+            if (!action) return;
+
+            if (action === 'reset') {
+                // 뷰 초기화 (가장 보기 편한 Isometric 각도로 스르륵 복원)
+                targetRotationX = 0.4;
+                targetRotationY = 0.78;
+                targetScale = 1.0;
+                targetPanX = 0;
+                targetPanY = 0;
+                
+                document.querySelectorAll('[id^="btn-view-"]').forEach(btn => btn.classList.remove('active'));
+                const btnIso = document.getElementById('btn-view-iso');
+                if (btnIso) btnIso.classList.add('active');
+                
+                showMessage("뷰어가 홈 화면으로 초기화되었습니다.", "success", 2500);
+            } 
+            else if (action === 'explode') {
+                // 폭파 애니메이션 토글
+                isExploded = !isExploded;
+                showMessage(isExploded ? "부품을 분해(Exploded View)합니다." : "부품을 재조립(Assembly)합니다.", "success", 2500);
+            } 
+            else if (action === 'clipping') {
+                // 단면 보기 토글
+                toggleClipping();
+            } 
+            else if (action === 'xray') {
+                // X-Ray 모드 토글
+                const nextMode = currentRenderMode === 'xray' ? 'solid' : 'xray';
+                setRenderMode(nextMode);
+            }
+        }
+
+        /**
+         * [함수] updateAmbientIntensity(val)
+         * 슬라이더 입력값에 맞춰 환경광(Ambient Light)의 강도를 실시간 조절합니다.
+         */
+        function updateAmbientIntensity(val) {
+            const num = parseFloat(val);
+            if (ambientLight) {
+                ambientLight.intensity = num;
+            }
+            const label = document.getElementById('val-ambient');
+            if (label) {
+                label.innerText = num.toFixed(1);
+            }
+        }
+
+        /**
+         * [함수] updateDirectionalIntensity(val)
+         * 슬라이더 입력값에 맞춰 주 조명(Directional Light)의 강도를 실시간 조절합니다.
+         */
+        function updateDirectionalIntensity(val) {
+            const num = parseFloat(val);
+            if (dirLight) {
+                dirLight.intensity = num;
+            }
+            const label = document.getElementById('val-dir');
+            if (label) {
+                label.innerText = num.toFixed(1);
+            }
+        }
+
+
+
+        /**
+         * [함수] toggleWebcam()
+         * 웹캠 PIP 피드 접기/펼치기 토글 함수
+         */
+        function toggleWebcam() {
+            const container = document.getElementById('webcam-container');
+            const icon = document.getElementById('webcam-toggle-icon');
+            const handle = document.getElementById('webcam-resize-handle');
+            
+            isWebcamMinimized = !isWebcamMinimized;
+            
+            if (isWebcamMinimized) {
+                container.classList.add('webcam-minimized');
+                container.style.width = '';
+                container.style.height = '';
+                if (handle) handle.style.display = 'none';
+                icon.className = 'fa-solid fa-chevron-up text-[10px]';
+                showMessage("웹캠 피드를 최소화합니다.", "info", 1200);
+            } else {
+                container.classList.remove('webcam-minimized');
+                container.style.width = webcamWidth + 'px';
+                container.style.height = webcamHeight + 'px';
+                if (handle) handle.style.display = 'flex';
+                icon.className = 'fa-solid fa-chevron-down text-[10px]';
+                showMessage("웹캠 피드를 전체 활성화합니다.", "info", 1200);
+            }
+        }
+
+        /**
+         * [함수] toggleLeftPanel()
+         * 좌측 제어 패널 접기/펼치기 토글 함수
+         */
+        function toggleLeftPanel() {
+            const panel = document.getElementById('left-panel');
+            const openBtn = document.getElementById('btn-open-left');
+            
+            isLeftPanelCollapsed = !isLeftPanelCollapsed;
+            
+            if (isLeftPanelCollapsed) {
+                panel.classList.add('panel-collapsed-left');
+                openBtn.classList.add('active');
+                showMessage("조작 패널을 접었습니다.", "info", 1200);
+            } else {
+                panel.classList.remove('panel-collapsed-left');
+                openBtn.classList.remove('active');
+                showMessage("조작 패널을 펼쳤습니다.", "info", 1200);
+                if (window.innerWidth <= 840 && !isRightPanelCollapsed) {
+                    toggleRightPanel();
+                }
+            }
+        }
+
+        /**
+         * [함수] toggleRightPanel()
+         * 우측 설정 패널 접기/펼치기 토글 함수
+         */
+        function toggleRightPanel() {
+            const panel = document.getElementById('right-panel');
+            const openBtn = document.getElementById('btn-open-right');
+            
+            isRightPanelCollapsed = !isRightPanelCollapsed;
+            
+            if (isRightPanelCollapsed) {
+                panel.classList.add('panel-collapsed-right');
+                openBtn.classList.add('active');
+                showMessage("설정 패널을 접었습니다.", "info", 1200);
+            } else {
+                panel.classList.remove('panel-collapsed-right');
+                openBtn.classList.remove('active');
+                showMessage("설정 패널을 펼쳤습니다.", "info", 1200);
+                if (window.innerWidth <= 840 && !isLeftPanelCollapsed) {
+                    toggleLeftPanel();
+                }
+            }
+        }
+
+        /**
+         * [함수] initWebcamResize()
+         * 웹캠 PIP 컨테이너 드래그 크기 조절 기능 초기화 함수
+         */
+        function initWebcamResize() {
+            const container = document.getElementById('webcam-container');
+            const handle = document.getElementById('webcam-resize-handle');
+            if (!handle || !container) return;
+            
+            let isResizing = false;
+            let startX, startY, startWidth, startHeight;
+            
+            // 데스크톱 마우스 및 모바일 터치 이벤트 바인딩
+            handle.addEventListener('mousedown', startResize);
+            handle.addEventListener('touchstart', startResize, { passive: false });
+            
+            function startResize(e) {
+                if (isWebcamMinimized) return;
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
+                isResizing = true;
+                
+                const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+                
+                startX = clientX;
+                startY = clientY;
+                startWidth = container.offsetWidth;
+                startHeight = container.offsetHeight;
+                
+                document.addEventListener('mousemove', resize);
+                document.addEventListener('mouseup', stopResize);
+                document.addEventListener('touchmove', resize, { passive: false });
+                document.addEventListener('touchend', stopResize);
+                
+                document.body.style.userSelect = 'none';
+                container.style.transition = 'none';
+                container.style.borderColor = '#3b82f6';
+            }
+            
+            function resize(e) {
+                if (!isResizing) return;
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
+                
+                const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+                
+                const dx = startX - clientX;
+                let newWidth = startWidth + dx;
+                
+                const minWidth = 90;
+                const maxWidth = Math.min(window.innerWidth - 32, 450);
+                
+                if (newWidth < minWidth) newWidth = minWidth;
+                if (newWidth > maxWidth) newWidth = maxWidth;
+                
+                let newHeight = Math.round(newWidth * 0.75);
+                
+                webcamWidth = newWidth;
+                webcamHeight = newHeight;
+                
+                container.style.setProperty('width', newWidth + 'px', 'important');
+                container.style.setProperty('height', newHeight + 'px', 'important');
+            }
+            
+            function stopResize() {
+                if (!isResizing) return;
+                isResizing = false;
+                
+                document.removeEventListener('mousemove', resize);
+                document.removeEventListener('mouseup', stopResize);
+                document.removeEventListener('touchmove', resize);
+                document.removeEventListener('touchend', stopResize);
+                
+                document.body.style.userSelect = '';
+                container.style.transition = '';
+                container.style.borderColor = '#334155';
+            }
+        }
+
+        /**
+         * ==========================================
+         * 4. 시스템 메인 엔트리
+         * ==========================================
+         */
+        async function initApp() {
+            showMessage("3D CAD 렌더링 엔진 가동 중...", "info", 0);
+            init3D();
+            initWebcamResize();
+            enableMouseControl();
+
+            try {
+                showMessage("AI 비전 감지 모델 로딩 중...", "info", 0);
+                
+                const hands = new Hands({
+                    locateFile: (file) => {
+                        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                    }
+                });
+
+                hands.setOptions({
+                    maxNumHands: 2,
+                    modelComplexity: 1,
+                    minDetectionConfidence: 0.75, // 오인식 방지를 위해 정확도 기준 상향 조정
+                    minTrackingConfidence: 0.75
+                });
+
+                hands.onResults(onResults);
+
+                showMessage("카메라 센서 신호를 기다리는 중...", "info", 0);
+                
+                // 카메라 스트림 획득 (Galaxy S24 전면 카메라 최적화)
+                videoElement.muted = true;
+                videoElement.setAttribute('muted', '');
+                videoElement.setAttribute('playsinline', '');
+                videoElement.setAttribute('autoplay', '');
+
+                let stream = null;
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        audio: false,
+                        video: {
+                            facingMode: 'user',
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        }
+                    });
+                } catch (camErr) {
+                    console.warn("Front camera with ideal constraints failed, trying generic video fallback:", camErr);
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        audio: false,
+                        video: true
+                    });
+                }
+
+                videoElement.srcObject = stream;
+                await videoElement.play();
+
+                // 카메라 프레임마다 MediaPipe Hands 처리 (requestVideoFrameCallback 지원)
+                let isProcessingFrame = false;
+                async function onCameraFrame() {
+                    if (!videoElement.paused && !videoElement.ended && videoElement.readyState >= 2) {
+                        if (!isProcessingFrame) {
+                            isProcessingFrame = true;
+                            try {
+                                await hands.send({ image: videoElement });
+                            } catch (e) {
+                                console.error("hands.send error:", e);
+                            } finally {
+                                isProcessingFrame = false;
+                            }
+                        }
+                    }
+                    if ('requestVideoFrameCallback' in videoElement) {
+                        videoElement.requestVideoFrameCallback(onCameraFrame);
+                    } else {
+                        requestAnimationFrame(onCameraFrame);
+                    }
+                }
+
+                if ('requestVideoFrameCallback' in videoElement) {
+                    videoElement.requestVideoFrameCallback(onCameraFrame);
+                } else {
+                    requestAnimationFrame(onCameraFrame);
+                }
+
+                showMessage("조작 준비 완료! 손을 화면에 비춰주세요.", "success", 4000);
+
+            } catch (error) {
+                console.error("Camera vision initialize failed:", error);
+                let errorMsg = "카메라 센서 접근 실패. 마우스 시뮬레이션 모드로 전환되었습니다.";
+                if (window.location.protocol === 'file:') {
+                    errorMsg = "보안 제한: 로컬 파일(file://)에서는 카메라가 차단됩니다. localhost 서버로 접속해주세요!";
+                }
+                showMessage(errorMsg, "error", 8000);
+                
+                document.getElementById('track-status').innerText = "Mouse Mode";
+                document.getElementById('track-status').className = "text-blue-500 font-mono";
+                document.getElementById('status-icon').className = "fa-solid fa-computer-mouse text-blue-500 animate-pulse";
+                document.getElementById('pinch-status').innerText = "Click to Grip";
+                
+                enableMouseControl();
+            }
+        }
+
+        window.onload = () => {
+            initApp();
+        };
+    </script>
+</body>
+</html>

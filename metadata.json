@@ -1,0 +1,6 @@
+{
+  "name": "Smart Pinch 3D",
+  "description": "3D CAD Viewer with AI Gesture Controls and WebView Integration",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
