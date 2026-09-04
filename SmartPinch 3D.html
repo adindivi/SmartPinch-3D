@@ -357,70 +357,71 @@
                 </div>
             </div>
 
-            <!-- Right Side Control Panel -->
-            <div id="right-panel" class="glass-panel p-5 rounded-2xl shadow-2xl min-w-[280px] flex flex-col gap-4">
+            <!-- Right Side Control Panel (Apple Reference Inset Grouped) -->
+            <div id="right-panel" class="apple-glass p-5 rounded-3xl shadow-2xl min-w-[280px] max-w-sm flex flex-col gap-3.5 panel-collapsed-right overflow-y-auto max-h-[88vh]">
                 <!-- System Status Header with Minimize -->
-                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <div class="flex justify-between items-center border-b border-white/10 pb-1.5">
                     <div class="flex items-center gap-2">
-                        <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider">System Status</span>
-                        <i id="status-icon" class="fa-solid fa-circle-notch fa-spin text-amber-400"></i>
+                        <span class="text-[11px] text-white/60 font-semibold uppercase tracking-wider">System Status</span>
+                        <i id="status-icon" class="fa-solid fa-circle-notch fa-spin text-[#2997ff] text-xs"></i>
                     </div>
-                    <button onclick="toggleRightPanel()" class="text-slate-400 hover:text-slate-200 transition-colors w-6 h-6 flex items-center justify-center rounded-lg hover:bg-slate-800/50" title="Collapse Panel">
+                    <button onclick="toggleRightPanel()" class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors flex items-center justify-center" title="Collapse Panel">
                         <i class="fa-solid fa-chevron-right text-xs"></i>
                     </button>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-y-1.5 text-xs text-slate-300">
-                    <span class="text-slate-400">Hand Tracking</span>
-                    <span id="track-status" class="text-amber-400 font-mono text-right">Initializing...</span>
+                <!-- Status Metrics Inset Card -->
+                <div class="bg-white/5 p-3 rounded-2xl border border-white/10 grid grid-cols-2 gap-y-2 text-xs">
+                    <span class="text-white/60 text-[11px] font-medium">Hand Tracking</span>
+                    <span id="track-status" class="text-[#2997ff] font-mono text-right font-medium">Initializing...</span>
                     
-                    <span class="text-slate-400">Action State</span>
-                    <span id="pinch-status" class="text-slate-500 font-mono text-right font-semibold">OFF</span>
+                    <span class="text-white/60 text-[11px] font-medium">Action State</span>
+                    <span id="pinch-status" class="text-white/40 font-mono text-right font-semibold">OFF</span>
 
-                    <span class="text-slate-400">Rotation Y</span>
-                    <span id="rot-y" class="text-blue-300 font-mono text-right">0.0°</span>
+                    <span class="text-white/60 text-[11px] font-medium">Rotation Y</span>
+                    <span id="rot-y" class="text-white font-mono text-right">0.0°</span>
 
-                    <span class="text-slate-400">Scale (Zoom)</span>
-                    <span id="scale-val" class="text-purple-300 font-mono text-right">100%</span>
+                    <span class="text-white/60 text-[11px] font-medium">Scale (Zoom)</span>
+                    <span id="scale-val" class="text-white font-mono text-right">100%</span>
                 </div>
 
-                <!-- Rendering Modes -->
-                <div class="flex flex-col gap-2">
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rendering Modes</span>
+                <!-- Rendering Modes (Apple 36px Capsule Pills) -->
+                <div class="flex flex-col gap-1.5 pt-1">
+                    <span class="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Rendering Modes</span>
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="setRenderMode('solid')" class="ctrl-btn py-1.5 px-2 rounded-lg text-xs font-semibold active" id="btn-render-solid">Solid</button>
-                        <button onclick="setRenderMode('wireframe')" class="ctrl-btn py-1.5 px-2 rounded-lg text-xs font-semibold" id="btn-render-wireframe">Wireframe</button>
-                        <button onclick="setRenderMode('xray')" class="ctrl-btn py-1.5 px-2 rounded-lg text-xs font-semibold" id="btn-render-xray">X-Ray</button>
-                        <button onclick="setRenderMode('hologram')" class="ctrl-btn py-1.5 px-2 rounded-lg text-xs font-semibold" id="btn-render-hologram">Hologram</button>
+                        <button onclick="setRenderMode('solid')" class="ctrl-btn h-[36px] text-xs font-medium flex items-center justify-center rounded-full active" id="btn-render-solid">Solid</button>
+                        <button onclick="setRenderMode('wireframe')" class="ctrl-btn h-[36px] text-xs font-medium flex items-center justify-center rounded-full" id="btn-render-wireframe">Wireframe</button>
+                        <button onclick="setRenderMode('xray')" class="ctrl-btn h-[36px] text-xs font-medium flex items-center justify-center rounded-full" id="btn-render-xray">X-Ray</button>
+                        <button onclick="setRenderMode('hologram')" class="ctrl-btn h-[36px] text-xs font-medium flex items-center justify-center rounded-full" id="btn-render-hologram">Hologram</button>
                     </div>
                 </div>
 
-                <!-- Lighting Adjustments -->
-                <div class="flex flex-col gap-2.5">
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Lighting Control</span>
-                    <div class="flex flex-col gap-2 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/50">
+                <!-- Lighting Adjustments (Apple Inset Grouped Sliders) -->
+                <div class="flex flex-col gap-1.5 pt-2 border-t border-white/10">
+                    <span class="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Lighting Control</span>
+                    <div class="flex flex-col gap-3 bg-white/5 p-3 rounded-2xl border border-white/10">
                         <!-- Ambient Light Slider -->
-                        <div class="flex flex-col gap-1">
+                        <div class="flex flex-col gap-1.5">
                             <div class="flex justify-between items-center text-[11px]">
-                                <span class="text-slate-400">Ambient Light</span>
-                                <span id="val-ambient" class="text-slate-300 font-mono">0.6</span>
+                                <span class="text-white/70 font-medium">Ambient Light</span>
+                                <span id="val-ambient" class="px-2 py-0.5 rounded-full bg-white/10 text-[10px] text-white font-mono">0.6</span>
                             </div>
-                            <input type="range" id="slide-ambient" min="0.0" max="2.0" step="0.1" value="0.6" oninput="updateAmbientIntensity(this.value)" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                            <input type="range" id="slide-ambient" min="0.0" max="2.0" step="0.1" value="0.6" oninput="updateAmbientIntensity(this.value)" class="w-full h-1.5 bg-white/15 rounded-full appearance-none cursor-pointer accent-[#0071e3]">
                         </div>
                         <!-- Directional Light Slider -->
-                        <div class="flex flex-col gap-1">
+                        <div class="flex flex-col gap-1.5">
                             <div class="flex justify-between items-center text-[11px]">
-                                <span class="text-slate-400">Directional Light</span>
-                                <span id="val-dir" class="text-slate-300 font-mono">1.2</span>
+                                <span class="text-white/70 font-medium">Directional Light</span>
+                                <span id="val-dir" class="px-2 py-0.5 rounded-full bg-white/10 text-[10px] text-white font-mono">1.2</span>
                             </div>
-                            <input type="range" id="slide-dir" min="0.0" max="3.0" step="0.1" value="1.2" oninput="updateDirectionalIntensity(this.value)" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                            <input type="range" id="slide-dir" min="0.0" max="3.0" step="0.1" value="1.2" oninput="updateDirectionalIntensity(this.value)" class="w-full h-1.5 bg-white/15 rounded-full appearance-none cursor-pointer accent-[#0071e3]">
                         </div>
                     </div>
                 </div>
 
                 <!-- Quick Actions: 360 Auto-Rotate & Snapshot Capture -->
-                <div class="flex flex-col gap-2 border-t border-slate-800/60 pt-3">
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Quick Actions</span>
+                <div class="flex flex-col gap-2 border-t border-white/10 pt-2.5">
+                    <span class="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Quick Actions</span>
                     <div class="grid grid-cols-2 gap-2">
                         <!-- 3D Hotspot Markers Toggle Button (Apple 40px Capsule) -->
                         <button onclick="toggleAnnotations()" id="btn-toggle-markers" class="ctrl-btn h-[40px] text-xs font-medium flex items-center justify-center gap-1.5 transition-all bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 active:scale-95 col-span-2" title="Toggle 3D Hotspot Markers">
