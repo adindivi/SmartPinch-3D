@@ -423,8 +423,13 @@
                 <div class="flex flex-col gap-2 border-t border-white/10 pt-2.5">
                     <span class="text-[11px] font-semibold text-white/50 uppercase tracking-wider">Quick Actions</span>
                     <div class="grid grid-cols-2 gap-2">
-                        <!-- 3D Hotspot Markers Toggle Button (Apple 40px Capsule) -->
-                        <button onclick="toggleAnnotations()" id="btn-toggle-markers" class="ctrl-btn h-[40px] text-xs font-medium flex items-center justify-center gap-1.5 transition-all bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 active:scale-95 col-span-2" title="Toggle 3D Hotspot Markers">
+                        <!-- Hand Tracking Toggle Button (Apple 40px Capsule) -->
+                        <button onclick="toggleHandTracking()" id="btn-toggle-hand-tracking" class="ctrl-btn h-[40px] text-xs font-medium flex items-center justify-center gap-1.5 transition-all bg-[#0071e3] border-[#0071e3] text-white active:scale-95 col-span-2 shadow-sm" title="Toggle AI Hand Tracking">
+                            <i id="icon-toggle-hand-tracking" class="fa-solid fa-hand text-white"></i>
+                            <span id="text-toggle-hand-tracking">손 제어: ON</span>
+                        </button>
+                        <!-- 3D Hotspot Markers Toggle Button (Apple 36px Capsule) -->
+                        <button onclick="toggleAnnotations()" id="btn-toggle-markers" class="ctrl-btn h-[36px] text-xs font-medium flex items-center justify-center gap-1.5 transition-all bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 active:scale-95 col-span-2" title="Toggle 3D Hotspot Markers">
                             <i id="icon-toggle-markers" class="fa-solid fa-location-pin-lock text-white/50"></i>
                             <span id="text-toggle-markers">3D 마커: OFF</span>
                         </button>
@@ -1264,6 +1269,12 @@
          * MediaPipe 가 획득한 손 뼈대 데이터를 실시간 연산하여 기능 제어로 매핑하는 핵심 루프 콜백
          */
         function onResults(results) {
+            if (!isHandTrackingEnabled) {
+                if (canvasCtx && canvasElement) {
+                    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                }
+                return;
+            }
             canvasElement.width = videoElement.videoWidth;
             canvasElement.height = videoElement.videoHeight;
             canvasCtx.save();
@@ -2265,6 +2276,65 @@
                 if (layer) layer.style.display = 'none';
                 closeSpecCard(false);
                 showMessage("3D 어노테이션 마커를 숨겼습니다.", "info", 1500);
+            }
+        }
+
+                let isHandTrackingEnabled = true;
+
+        /**
+         * [함수] toggleHandTracking(forceState)
+         * 카메라 AI 손 제스처 제어 모드 ON/OFF 전환
+         */
+        function toggleHandTracking(forceState = null) {
+            isHandTrackingEnabled = forceState !== null ? forceState : !isHandTrackingEnabled;
+            triggerHaptic(30);
+
+            const btn = document.getElementById('btn-toggle-hand-tracking');
+            const icon = document.getElementById('icon-toggle-hand-tracking');
+            const text = document.getElementById('text-toggle-hand-tracking');
+            const trackStatus = document.getElementById('track-status');
+            const pinchStatus = document.getElementById('pinch-status');
+            const statusIcon = document.getElementById('status-icon');
+
+            if (isHandTrackingEnabled) {
+                if (btn) {
+                    btn.classList.add('bg-[#0071e3]', 'border-[#0071e3]', 'text-white');
+                    btn.classList.remove('bg-white/5', 'text-white/70', 'border-white/10');
+                }
+                if (icon) icon.className = 'fa-solid fa-hand text-white';
+                if (text) text.innerText = '손 제어: ON';
+                if (trackStatus) {
+                    trackStatus.innerText = 'Active';
+                    trackStatus.className = 'text-[#2997ff] font-mono text-right font-medium';
+                }
+                if (statusIcon) statusIcon.className = 'fa-solid fa-satellite-dish text-[#2997ff] animate-pulse text-xs';
+                showMessage("카메라 AI 손 제어를 켰습니다.", "info", 1500);
+            } else {
+                // 제스처 상태 즉시 리셋
+                isRightPinching = false;
+                isLeftPinching = false;
+                isTwoHandPinching = false;
+                activeRightGesture = 'none';
+                if (canvasCtx && canvasElement) {
+                    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                }
+
+                if (btn) {
+                    btn.classList.remove('bg-[#0071e3]', 'border-[#0071e3]', 'text-white');
+                    btn.classList.add('bg-white/5', 'text-white/70', 'border-white/10');
+                }
+                if (icon) icon.className = 'fa-solid fa-hand-slash text-white/50';
+                if (text) text.innerText = '손 제어: OFF';
+                if (trackStatus) {
+                    trackStatus.innerText = 'OFF (터치 모드)';
+                    trackStatus.className = 'text-white/40 font-mono text-right font-medium';
+                }
+                if (pinchStatus) {
+                    pinchStatus.innerText = 'OFF';
+                    pinchStatus.className = 'text-white/40 font-mono text-right font-semibold';
+                }
+                if (statusIcon) statusIcon.className = 'fa-solid fa-hand-pointer text-white/40 text-xs';
+                showMessage("카메라 손 제어를 껐습니다. (터치 조작 모드)", "info", 1800);
             }
         }
 
