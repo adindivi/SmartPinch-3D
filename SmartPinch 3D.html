@@ -565,6 +565,41 @@
         
         let scene, camera, renderer, carGroup;
         
+        // ==========================================
+        // 전역 상수 정의 (Clean Code - Magic Numbers 제거)
+        // ==========================================
+        const RAD_TO_DEG = 180 / Math.PI;
+        const DEG_TO_RAD = Math.PI / 180;
+        const EXPLODE_MAX_DISTANCE = 1.8;
+        const CAMERA_ANIM_DURATION = 1200;
+        const PINCH_ROTATION_THRESHOLD = 0.06;
+
+        // 자주 사용되는 DOM 요소 캐시 (프레임 단위 DOM 쿼리 부하 제거)
+        let cachedDOMElements = null;
+        function getDOMElements() {
+            if (!cachedDOMElements) {
+                cachedDOMElements = {
+                    rotY: document.getElementById('rot-y'),
+                    scaleVal: document.getElementById('scale-val'),
+                    trackStatus: document.getElementById('track-status'),
+                    pinchStatus: document.getElementById('pinch-status'),
+                    statusIcon: document.getElementById('status-icon'),
+                    annotationLayer: document.getElementById('annotation-layer'),
+                    specCard: document.getElementById('spec-card'),
+                    messageBox: document.getElementById('message-box'),
+                    messageText: document.getElementById('message-text')
+                };
+            }
+            return cachedDOMElements;
+        }
+
+        // 재사용 Three.js 벡터 (매 프레임 GC 가비지 컬렉션 부하 0화)
+        const _scratchCamForward = new THREE.Vector3();
+        const _scratchWorldPos = new THREE.Vector3();
+        const _scratchToMarker = new THREE.Vector3();
+        const _scratchScreenPos = new THREE.Vector3();
+        const annotationPinsMap = new Map();
+
         let targetRotationX = 0;
         let targetRotationY = 0;
         let currentRotationX = 0;
@@ -1011,23 +1046,20 @@
                 currentPanY += (targetPanY - currentPanY) * easing;
             }
 
-            // 폭파(Explode) 애니메이션 목표값 보간
+            // 폭파(Explode) 애니메이션 목표값 보간 및 조건부 연산 (움직일 때만 traverse 실행)
             const targetExplode = isExploded ? 1.0 : 0.0;
-            explodeProgress += (targetExplode - explodeProgress) * easing;
-
-            // 각 부품 메쉬의 로컬 위치 오프셋 연산
-            carGroup.traverse((child) => {
-                if (child.isMesh && child.userData.originalPosition) {
-                    const origPos = child.userData.originalPosition;
-                    // 중심축(0, 0, 0) 기준 외각 방향 벡터
-                    const dir = origPos.clone().normalize();
-                    // 수평 분해감 강조를 위해 Y축 높이 변화는 살짝만 제한
-                    dir.y = dir.y * 0.3; 
-                    
-                    // 폭파 강도(최대 약 1.8m 벌어짐)를 반영해 좌표 실시간 대입
-                    child.position.copy(origPos).addScaledVector(dir, explodeProgress * 1.8);
-                }
-            });
+            const explodeDelta = targetExplode - explodeProgress;
+            if (Math.abs(explodeDelta) > 0.0005 || explodeProgress > 0.0005) {
+                explodeProgress += explodeDelta * easing;
+                carGroup.traverse((child) => {
+                    if (child.isMesh && child.userData.originalPosition) {
+                        const origPos = child.userData.originalPosition;
+                        const dir = origPos.clone().normalize();
+                        dir.y = dir.y * 0.3; 
+                        child.position.copy(origPos).addScaledVector(dir, explodeProgress * EXPLODE_MAX_DISTANCE);
+                    }
+                });
+            }
 
             // 보간된 상태 수치 적용
             carGroup.rotation.x = currentRotationX;
@@ -1037,9 +1069,10 @@
             // 모델 평행이동 적용
             carGroup.position.set(currentPanX, currentPanY, 0);
 
-            // UI 텍스트 수치 표시 업데이트
-            document.getElementById('rot-y').innerText = (carGroup.rotation.y * (180/Math.PI)).toFixed(1) + '°';
-            document.getElementById('scale-val').innerText = (currentScale * 100).toFixed(0) + '%';
+            // UI 텍스트 수치 표시 캐시 업데이트 (DOM 쿼리 오버헤드 제거)
+            const domEls = getDOMElements();
+            if (domEls.rotY) domEls.rotY.innerText = (carGroup.rotation.y * RAD_TO_DEG).toFixed(1) + '°';
+            if (domEls.scaleVal) domEls.scaleVal.innerText = (currentScale * 100).toFixed(0) + '%';
 
             renderer.render(scene, camera);
 
@@ -1202,26 +1235,40 @@
          * [함수] showMessage(메시지내용, 타입, 지속시간)
          * 화면 중앙에 알림 팝업 토스트 창을 띄움
          */
-        function showMessage(msg, type='info', duration=3000) {
-            const msgBox = document.getElementById('message-box');
-            const msgText = document.getElementById('message-text');
-            const icon = msgBox.querySelector('i');
+        let messageTimeoutId = null;
+        /**
+         * [함수] showMessage(msg, type, duration)
+         * 상단 플로팅 글래스 HUD 알림 메시지 표시 (디바운싱 타이머 안전 처리)
+         * @param {string} msg - 알림 메시지 텍스트
+         * @param {'info'|'success'|'error'} type - 알림 종류
+         * @param {number} duration - 표시 유지 시간 (ms, 0일 경우 수동 해제 시까지 유지)
+         */
+        function showMessage(msg, type = 'info', duration = 3000) {
+            const dom = getDOMElements();
+            if (!dom.messageBox || !dom.messageText) return;
+            const icon = dom.messageBox.querySelector('i');
             
-            msgText.innerText = msg;
+            dom.messageText.innerText = msg;
             
-            if(type === 'error') {
-                icon.className = 'fa-solid fa-triangle-exclamation text-red-500';
+            if (type === 'error') {
+                if (icon) icon.className = 'fa-solid fa-triangle-exclamation text-red-400';
             } else if (type === 'success') {
-                icon.className = 'fa-solid fa-circle-check text-emerald-500';
+                if (icon) icon.className = 'fa-solid fa-circle-check text-emerald-400';
             } else {
-                icon.className = 'fa-solid fa-circle-info text-blue-400';
+                if (icon) icon.className = 'fa-solid fa-circle-info text-[#2997ff]';
             }
 
-            msgBox.classList.remove('opacity-0');
+            dom.messageBox.classList.remove('opacity-0');
             
-            if(duration > 0) {
-                setTimeout(() => {
-                    msgBox.classList.add('opacity-0');
+            if (messageTimeoutId) {
+                clearTimeout(messageTimeoutId);
+                messageTimeoutId = null;
+            }
+
+            if (duration > 0) {
+                messageTimeoutId = setTimeout(() => {
+                    if (dom.messageBox) dom.messageBox.classList.add('opacity-0');
+                    messageTimeoutId = null;
                 }, duration);
             }
         }
@@ -1638,11 +1685,21 @@
          * [함수] setViewPreset(preset)
          * 카메라 뷰 퀵 프리셋 변경 (Front, Side, Top, Iso)
          */
-        function setViewPreset(preset) {
-            // 버튼 액티브 클래스 제어
-            document.querySelectorAll('[id^="btn-view-"]').forEach(btn => btn.classList.remove('active'));
-            const activeBtn = document.getElementById(`btn-view-${preset}`);
+                /**
+         * [함수] setActiveButton(prefix, activeKey)
+         * 그룹 버튼 목록에서 특정 버튼만 활성화하고 나머지는 비활성화 (DRY 원칙)
+         * @param {string} prefix - 버튼 ID 접두사 (예: 'btn-view-', 'btn-render-')
+         * @param {string} activeKey - 활성화할 키 (예: 'front', 'solid')
+         */
+        function setActiveButton(prefix, activeKey) {
+            document.querySelectorAll(`[id^="${prefix}"]`).forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`${prefix}${activeKey}`);
             if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        function setViewPreset(preset) {
+            // 버튼 액티브 클래스 제어 (DRY 헬퍼 적용)
+            setActiveButton('btn-view-', preset);
 
             // 축 원복 및 초기화
             targetPanX = 0;
@@ -1671,9 +1728,8 @@
          */
         function setRenderMode(mode) {
             currentRenderMode = mode;
-            document.querySelectorAll('[id^="btn-render-"]').forEach(btn => btn.classList.remove('active'));
-            const activeBtn = document.getElementById(`btn-render-${mode}`);
-            if (activeBtn) activeBtn.classList.add('active');
+            // 버튼 액티브 클래스 제어 (DRY 헬퍼 적용)
+            setActiveButton('btn-render-', mode);
 
             if (!carGroup) return;
 
@@ -1926,10 +1982,12 @@
             const layer = document.getElementById('annotation-layer');
             if (!layer) return;
             layer.innerHTML = '';
+            annotationPinsMap.clear();
 
             const markers = getCurrentMarkerList();
             markers.forEach((m) => {
                 const pin = document.createElement('div');
+                annotationPinsMap.set(m.id, pin);
                 pin.id = `annotation-pin-${m.id}`;
                 pin.className = 'annotation-pin absolute cursor-pointer pointer-events-auto flex items-center justify-center group -translate-x-1/2 -translate-y-1/2 transition-opacity duration-200';
                 pin.style.transform = 'translate(-50%, -50%)';
@@ -1963,20 +2021,18 @@
             }
 
             const markers = getCurrentMarkerList();
-            const camForward = new THREE.Vector3();
-            camera.getWorldDirection(camForward);
+            camera.getWorldDirection(_scratchCamForward);
 
             markers.forEach((m) => {
-                const pin = document.getElementById(`annotation-pin-${m.id}`);
+                const pin = annotationPinsMap.get(m.id) || document.getElementById(`annotation-pin-${m.id}`);
                 if (!pin) return;
 
-                // 3D 월드 좌표 계산 (carGroup의 변환 행렬 적용)
-                const worldPos = new THREE.Vector3(m.pos.x, m.pos.y, m.pos.z);
-                worldPos.applyMatrix4(carGroup.matrixWorld);
+                // 3D 월드 좌표 계산 (재사용 벡터로 GC 0화)
+                _scratchWorldPos.set(m.pos.x, m.pos.y, m.pos.z).applyMatrix4(carGroup.matrixWorld);
 
                 // 카메라 전방 방향과 내적하여 등 뒤에 위치하는지 검사 (Occlusion Culling)
-                const toMarker = worldPos.clone().sub(camera.position);
-                const isBehind = toMarker.dot(camForward) <= 0;
+                _scratchToMarker.copy(_scratchWorldPos).sub(camera.position);
+                const isBehind = _scratchToMarker.dot(_scratchCamForward) <= 0;
 
                 if (isBehind) {
                     pin.style.display = 'none';
@@ -1984,17 +2040,17 @@
                 }
 
                 // Three.js 좌표를 화면 NDC(-1 ~ +1)로 투영
-                const screenPos = worldPos.clone().project(camera);
+                _scratchScreenPos.copy(_scratchWorldPos).project(camera);
 
                 // 화면 Frustum 영역 바깥인지 검사
-                if (screenPos.x < -1.1 || screenPos.x > 1.1 || screenPos.y < -1.1 || screenPos.y > 1.1) {
+                if (_scratchScreenPos.x < -1.1 || _scratchScreenPos.x > 1.1 || _scratchScreenPos.y < -1.1 || _scratchScreenPos.y > 1.1) {
                     pin.style.display = 'none';
                     return;
                 }
 
                 // 2D 픽셀 좌표 변환
-                const pixelX = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
-                const pixelY = (-(screenPos.y * 0.5) + 0.5) * window.innerHeight;
+                const pixelX = (_scratchScreenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const pixelY = (-(_scratchScreenPos.y * 0.5) + 0.5) * window.innerHeight;
 
                 pin.style.display = 'flex';
                 pin.style.left = `${pixelX}px`;
