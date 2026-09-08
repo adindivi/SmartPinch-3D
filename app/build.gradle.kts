@@ -15,7 +15,7 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.smartpinch3d.qxwzpv"
+    applicationId = "com.smartpinch3d.kyh"
     minSdk = 24
     targetSdk = 36
     versionCode = 1
